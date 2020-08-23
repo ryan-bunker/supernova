@@ -1,22 +1,30 @@
-import seedrandom from 'seedrandom';
+import * as seedrandom from 'seedrandom';
 import './style.css';
 
 const MAP_SIZE = 20000,
       SECTOR_SIZE = 500,
       STAR_DENSITY = 15;
-let global_stars;
-let global_sectors;
+let global_stars: Star[];
+let global_sectors: number[][][];
 
-function generateStars() {
+type Star = {
+    id: number,
+    x: number,
+    y: number,
+    sx: number,
+    sy: number,
+};
+
+function generateStars(): {stars: Star[], sectors: number[][][]} {
     seedrandom('stars! is awesome');
 
-    const stars = [];
-    const sectors = [];
+    const stars: Star[] = [];
+    const sectors: number[][][] = [];
 
-    for (let sx= -MAP_SIZE/SECTOR_SIZE; sx < MAP_SIZE/SECTOR_SIZE; sx++) {
+    for (let sx = -MAP_SIZE/SECTOR_SIZE; sx < MAP_SIZE/SECTOR_SIZE; sx++) {
         for (let sy = -MAP_SIZE/SECTOR_SIZE; sy < MAP_SIZE/SECTOR_SIZE; sy++) {
             const count = Math.random() * 2 * STAR_DENSITY * 0.1 + STAR_DENSITY * 0.9;
-            
+
             let sectX = sectors[sx];
             if (!sectX) {
                 sectX = [];
@@ -55,9 +63,11 @@ function generateStars() {
             }
         }
     }
-    
+
     return { stars, sectors };
 }
+
+type Point = {x: number, y: number};
 
 const mapState = {
     translateX: 0,
@@ -66,11 +76,10 @@ const mapState = {
     scalePointX: 0,
     scalePointY: 0,
 };
-let lastMouse = null;
-let dragging = false;
+let lastMouse: Point|null = null;
 
 function resize_canvas() {
-    const canvas = document.getElementById("canvas");
+    const canvas = document.getElementById("canvas") as HTMLCanvasElement;
     if (canvas.width  < window.innerWidth) {
         canvas.width  = window.innerWidth;
     }
@@ -80,14 +89,14 @@ function resize_canvas() {
     }
 }
 
-function transform(point) {
+function transform(point: Point): Point {
     return {
         x: point.x * mapState.scale + mapState.translateX,
         y: point.y * mapState.scale + mapState.translateY
     };
 }
 
-function transformScreenToMap(point) {
+function transformScreenToMap(point: Point): Point {
     return {
         x: (point.x - mapState.translateX) / mapState.scale,
         y: (point.y - mapState.translateY) / mapState.scale
@@ -95,7 +104,7 @@ function transformScreenToMap(point) {
 }
 
 function draw() {
-    const canvas = document.getElementById('canvas');
+    const canvas = document.getElementById('canvas') as HTMLCanvasElement;
     const ctx = canvas.getContext('2d');
     
     // project screen viewport into map coordinates
@@ -149,7 +158,7 @@ function draw() {
 }
 
 function body_load() {
-    const canvas = document.getElementById('canvas');
+    const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 
     const data = generateStars();
     global_stars = data.stars;
