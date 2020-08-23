@@ -31,16 +31,14 @@ export class Transform {
     }
 
     public transform(point: Point): Point {
-        return {
-            x: point.x * this.scale + this._offset.x,
-            y: point.y * this.scale + this._offset.y
-        };
+        return new Point(
+            point.x * this.scale + this._offset.x,
+            point.y * this.scale + this._offset.y);
     }
     
     public untransform(point: Point): Point {
-        return {
-            x: (point.x - this._offset.x) / this.scale,
-            y: (point.y - this._offset.y) / this.scale
-        };
+        return new Point(
+            (point.x - this._offset.x) / this.scale,
+            (point.y - this._offset.y) / this.scale);
     }
 }
