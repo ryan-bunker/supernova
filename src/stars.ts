@@ -1,4 +1,4 @@
-import * as seedrandom from 'seedrandom';
+import Rand, {PRNG} from 'rand-seed';
 
 export type Star = {
     id: number,
@@ -13,10 +13,12 @@ export class StarDB {
     private readonly _sectors: number[][][] = [];
     private readonly _sectorSize: number;
     private readonly _starDensity: number;
+    private readonly _rand: { next: () => number };
 
-    constructor(sectorSize: number, starDensity: number) {
+    constructor(seed: string, sectorSize: number, starDensity: number) {
         this._sectorSize = sectorSize;
         this._starDensity = starDensity;
+        this._rand = new Rand(seed);
     }
 
     public getSectors(minX: number, minY: number, maxX: number, maxY: number): Star[][][] {
@@ -65,14 +67,14 @@ export class StarDB {
 
     private generateSector(sx: number, sy: number): number[] {
         // each sector has +/-10% of _starDensity
-        const count = Math.floor(Math.random() * 2 * this._starDensity * 0.1 + this._starDensity * 0.9);
+        const count = Math.floor(this._rand.next() * 2 * this._starDensity * 0.1 + this._starDensity * 0.9);
         const sector: number[] = [];
         console.log(`Generating sector (${sx}, ${sy}) with ${count} stars`);
 
         // generate 'count' random stars with random positions
         for (let i = 0; i < count; i++) {
-            const x = Math.floor((Math.random() + sx) * this._sectorSize);
-            const y = Math.floor((Math.random() + sy) * this._sectorSize);
+            const x = Math.floor((this._rand.next() + sx) * this._sectorSize);
+            const y = Math.floor((this._rand.next() + sy) * this._sectorSize);
             const s = this.generateStar(x, y);
             sector.push(s.id);
         }
@@ -109,9 +111,7 @@ export class StarDB {
     }
 
     public static generateUniverse(seed: string, mapSize: number, sectorSize: number, starDensity: number): StarDB {
-        seedrandom(seed);
-
-        const db = new StarDB(sectorSize, starDensity);
+        const db = new StarDB(seed, sectorSize, starDensity);
         const sectorCount = mapSize / sectorSize;
 
         for (let sx = -sectorCount; sx < sectorCount; sx++) {

@@ -1,4 +1,3 @@
-import * as seedrandom from 'seedrandom';
 import { StarDB, Star } from './stars';
 import './style.css';
 
