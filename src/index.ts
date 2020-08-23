@@ -1,71 +1,11 @@
 import * as seedrandom from 'seedrandom';
+import { StarDB, Star } from './stars';
 import './style.css';
 
-const MAP_SIZE = 20000,
+const MAP_SIZE = 1000,
       SECTOR_SIZE = 500,
       STAR_DENSITY = 15;
-let global_stars: Star[];
-let global_sectors: number[][][];
-
-type Star = {
-    id: number,
-    x: number,
-    y: number,
-    sx: number,
-    sy: number,
-};
-
-function generateStars(): {stars: Star[], sectors: number[][][]} {
-    seedrandom('stars! is awesome');
-
-    const stars: Star[] = [];
-    const sectors: number[][][] = [];
-
-    for (let sx = -MAP_SIZE/SECTOR_SIZE; sx < MAP_SIZE/SECTOR_SIZE; sx++) {
-        for (let sy = -MAP_SIZE/SECTOR_SIZE; sy < MAP_SIZE/SECTOR_SIZE; sy++) {
-            const count = Math.random() * 2 * STAR_DENSITY * 0.1 + STAR_DENSITY * 0.9;
-
-            let sectX = sectors[sx];
-            if (!sectX) {
-                sectX = [];
-                sectors[sx] = sectX;
-            }
-            let sector = sectX[sy];
-            if (!sector) {
-                sector = [];
-                sectX[sy] = sector;
-            }
-
-            for (let i = 0; i < count; i++) {
-                const x = Math.floor((Math.random() + sx) * SECTOR_SIZE);
-                const y = Math.floor((Math.random() + sy) * SECTOR_SIZE);
-                
-                stars.push({ id: stars.length, x, y, sx, sy});
-                sector.push(stars.length - 1);
-            }
-
-            for (const starIdx of sector) {
-                const star = stars[starIdx];
-                const avg = {x: 0, y: 0};
-                for (const otherStarIdx of sector) {
-                    const otherStar = stars[otherStarIdx];
-                    if (star.id === otherStar.id) continue;
-                    const v = {x: otherStar.x - star.x, y: otherStar.y - star.y};
-                    const d = Math.sqrt(v.x * v.x + v.y * v.y);
-                    avg.x += v.x / d;
-                    avg.y += v.y / d;
-                }
-                avg.x = avg.x / (sector.length - 1);
-                avg.y = avg.y / (sector.length - 1);
-
-                star.x += avg.x * 0.5;
-                star.y += avg.y * 0.5;
-            }
-        }
-    }
-
-    return { stars, sectors };
-}
+const db = StarDB.generateUniverse('stars! is awesome', MAP_SIZE, SECTOR_SIZE, STAR_DENSITY);
 
 type Point = {x: number, y: number};
 
@@ -125,8 +65,10 @@ function draw() {
     ctx.strokeStyle = "gray";
     ctx.setLineDash([10, 10]);
 
+    const sectors = db.getSectors(sxMin, syMin, sxMax, syMax);
+
     for (let sx = sxMin; sx < sxMax; sx++) {
-        const sectX = global_sectors[sx];
+        const sectX = sectors[sx];
         if (!sectX) continue;
 
         for (let sy = syMin; sy < syMax; sy++) {
@@ -137,9 +79,8 @@ function draw() {
             const brSect = transform({x: (sx+1) * SECTOR_SIZE, y: (sy+1) * SECTOR_SIZE});
             //ctx.strokeRect(tlSect.x, tlSect.y, brSect.x - tlSect.x, brSect.y - tlSect.y);
 
-            for (const starIdx of sectY) {
-                const p = global_stars[starIdx];
-                const tp = transform(p);
+            for (const star of sectY) {
+                const tp = transform(star);
                 ctx.fillStyle = "white";
                 ctx.beginPath();
                 const r = 5 * mapState.scale;
@@ -159,10 +100,6 @@ function draw() {
 
 function body_load() {
     const canvas = document.getElementById('canvas') as HTMLCanvasElement;
-
-    const data = generateStars();
-    global_stars = data.stars;
-    global_sectors = data.sectors;
 
     resize_canvas();
     mapState.translateX = canvas.width / 2;
