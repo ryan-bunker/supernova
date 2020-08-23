@@ -62,4 +62,19 @@ window.onload = function() {
         renderer.transform.translate(-zoomPoint.x * scaleDelta, -zoomPoint.y * scaleDelta);
         renderer.render();
     });
+
+    window.addEventListener('keyup', (e) => {
+        switch (e.code) {
+            case 'KeyG':
+                renderer.renderSectorGrid = !renderer.renderSectorGrid;
+                break;
+            case 'KeyX':
+                renderer.renderDebugText = !renderer.renderDebugText;
+                break;
+            default:
+                // we don't wwant to render if any other key was pressed
+                return;
+        }
+        renderer.render();
+    });
 }
