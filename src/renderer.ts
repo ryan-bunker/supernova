@@ -1,5 +1,5 @@
 import { Transform, Point } from "./2d";
-import { Star } from "./stars";
+import { Star } from "./server/stars";
 
 interface SectorSource {
     getSectors(sxMin: number, syMin: number, sxMax: number, syMax: number): Star[][][];

@@ -1,4 +1,4 @@
-import { StarDB, Star } from './stars';
+import { StarDB, Star } from './server/stars';
 import './style.css';
 import { Renderer } from './renderer';
 import { Point } from './2d';
