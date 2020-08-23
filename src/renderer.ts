@@ -1,4 +1,4 @@
-import { Transform } from "./2d";
+import { Transform, Point } from "./2d";
 import { Star } from "./stars";
 
 interface SectorSource {
@@ -33,23 +33,25 @@ export class Renderer {
         const brScreen = { x: this._canvas.width, y: this._canvas.height };
         const tlMap = this._mapToScreen.untransform(tlScreen);
         const brMap = this._mapToScreen.untransform(brScreen);
-        const sxMin = Math.floor(tlMap.x / this._sectorSize);
-        const syMin = Math.floor(tlMap.y / this._sectorSize);
-        const sxMax = Math.ceil(brMap.x / this._sectorSize);
-        const syMax = Math.ceil(brMap.y / this._sectorSize);
+        const tlSect = new Point(
+            Math.floor(tlMap.x / this._sectorSize),
+            Math.floor(tlMap.y / this._sectorSize));
+        const brSect = new Point(
+            Math.ceil(brMap.x / this._sectorSize),
+            Math.ceil(brMap.y / this._sectorSize));
 
         ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
 
         ctx.strokeStyle = "gray";
         ctx.setLineDash([10, 10]);
 
-        const sectors = this._sectorSource.getSectors(sxMin, syMin, sxMax, syMax);
+        const sectors = this._sectorSource.getSectors(tlSect.x, tlSect.y, brSect.x, brSect.y);
 
-        for (let sx = sxMin; sx < sxMax; sx++) {
+        for (let sx = tlSect.x; sx < brSect.x; sx++) {
             const sectX = sectors[sx];
             if (!sectX) continue;
 
-            for (let sy = syMin; sy < syMax; sy++) {
+            for (let sy = tlSect.y; sy < brSect.y; sy++) {
                 const sectY = sectX[sy];
                 if (!sectY) continue;
 
@@ -74,9 +76,9 @@ export class Renderer {
             ctx.font = "16px Courier New";
             ctx.fillStyle = "red";
             ctx.fillText(`  offset: ${this._mapToScreen.offset}`, 10, 16);
-            ctx.fillText(`   scale: ${this._mapToScreen.scale}`, 10, 32);
-            ctx.fillText(`viewport: (${tlMap.x}, ${tlMap.y}), (${brMap.x}, ${brMap.y})`, 10, 48);
-            ctx.fillText(` sectors: (${sxMin}, ${syMin}), (${sxMax}, ${syMax})`, 10, 64);
+            ctx.fillText(`   scale: ${this._mapToScreen.scale.toFixed(3)}`, 10, 32);
+            ctx.fillText(`viewport: ${tlMap}, ${brMap}`, 10, 48);
+            ctx.fillText(` sectors: ${tlSect}, ${brSect}`, 10, 64);
         }
     }
 }
