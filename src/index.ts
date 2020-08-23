@@ -19,13 +19,9 @@ let lastMouse: Point|null = null;
 
 function resize_canvas() {
     const canvas = document.getElementById("canvas") as HTMLCanvasElement;
-    if (canvas.width  < window.innerWidth) {
-        canvas.width  = window.innerWidth;
-    }
-
-    if (canvas.height < window.innerHeight) {
-        canvas.height = window.innerHeight;
-    }
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    draw();
 }
 
 function transform(point: Point): Point {
@@ -97,7 +93,9 @@ function draw() {
     ctx.fillText(`  sectors: (${sxMin}, ${syMin}), (${sxMax}, ${syMax})`, 10, 64);    
 }
 
-function body_load() {
+window.onload = function() {
+    window.addEventListener('resize', resize_canvas);
+
     const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 
     resize_canvas();
@@ -152,6 +150,3 @@ function body_load() {
         draw();
     });
 }
-
-console.log('running...');
-body_load();
