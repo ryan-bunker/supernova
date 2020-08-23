@@ -43,7 +43,9 @@ export class Renderer {
         ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
 
         ctx.strokeStyle = "gray";
+        ctx.fillStyle = "gray";
         ctx.setLineDash([10, 10]);
+        ctx.font = "16px Courier New";
 
         const sectors = this._sectorSource.getSectors(tlSect.x, tlSect.y, brSect.x, brSect.y);
 
@@ -59,6 +61,7 @@ export class Renderer {
                     const tlSect = this._mapToScreen.transform({ x: sx * this._sectorSize, y: sy * this._sectorSize });
                     const brSect = this._mapToScreen.transform({ x: (sx + 1) * this._sectorSize, y: (sy + 1) * this._sectorSize });
                     ctx.strokeRect(tlSect.x, tlSect.y, brSect.x - tlSect.x, brSect.y - tlSect.y);
+                    ctx.fillText(`${sx}:${sy}`, tlSect.x + 4, tlSect.y + 20);
                 }
 
                 for (const star of sectY) {
