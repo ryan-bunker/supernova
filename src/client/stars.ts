@@ -51,7 +51,14 @@ export class StarsClient {
 
     getSectors(sxMin: number, syMin: number, sxMax: number, syMax: number): Star[][][] {
         const stars = this._db.getSectors(sxMin, syMin, sxMax, syMax);
-        return _.map(stars, x => _.map(x, y => _.map(y, dbStar => this.mapStar(dbStar))));
+        const result: Star[][][] = [];
+        for (let sx=sxMin; sx<=sxMax; sx++) {
+            result[sx] = [];
+            for (let sy=syMin; sy<=syMax; sy++) {
+                result[sx][sy] = _.map(stars[sx][sy], dbStar => this.mapStar(dbStar));
+            }
+        }
+        return result;
     }
 
     private mapStar(dbStar: server.Star): Star {
