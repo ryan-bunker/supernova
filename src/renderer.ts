@@ -1,12 +1,14 @@
 import { Transform, Point } from "./2d";
 import { Star, Planet } from "./server/stars";
+import { Ship } from "./server/player";
 
 interface SectorSource {
     getSectors(sxMin: number, syMin: number, sxMax: number, syMax: number): Star[][][];
 }
 
 interface PlayerData {
-    homeworld: Planet;
+    homeworld: Readonly<Planet>;
+    ships: Readonly<Ship[]>;
 }
 
 export class Renderer {
@@ -71,6 +73,11 @@ export class Renderer {
         ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
 
         const sectors = this._sectorSource.getSectors(tlSect.x, tlSect.y, brSect.x, brSect.y);
+        // alpha based on scale
+        // scale [min, 0.5] -> alpha 0.0
+        // scale [0.5, 2.0] -> alpha (linear)
+        // scale [2.0, max] -> alpha 1.0
+        const alpha = Math.max(0, Math.min((this._mapToScreen.scale - 0.5) / 1.5, 1.0));
 
         for (let sx = tlSect.x; sx <= brSect.x; sx++) {
             const sectX = sectors[sx];
@@ -101,13 +108,8 @@ export class Renderer {
                     ctx.arc(tp.x, tp.y, Math.max(3, 5 * this._mapToScreen.scale), 0, 2 * Math.PI);
                     ctx.fill();
 
-                    const alpha = Math.max(0, Math.min((this._mapToScreen.scale - 0.5) / 1.5, 1.0));
                     if (alpha > 0) {
                         for (const planet of star.planets) {
-                            // alpha based on scale
-                            // scale [min, 1.0] -> alpha 0.0
-                            // scale [1.0, 2.0] -> alpha (linear)
-                            // scale [2.0, max] -> alpha 1.0
                             ctx.strokeStyle = `rgba(37, 37, 37, ${alpha})`;
                             if (this._playerData.homeworld.star.id === star.id && this._playerData.homeworld.id == planet.id) {
                                 ctx.fillStyle = `rgba(0, 0, 255, ${alpha})`;
@@ -121,17 +123,39 @@ export class Renderer {
                             ctx.stroke();
                             // now draw planet
                             ctx.beginPath();
-                            const period = Math.floor(60000 * planet.year);
-                            const phi = planet.phi + ((Date.now() % period) / period) * 2 * Math.PI;
-                            const planetPt = new Point(
-                                star.x + planet.r * Math.cos(phi),
-                                star.y + planet.r * Math.sin(phi));
-                            const tPlanetPt = this._mapToScreen.transform(planetPt);
+                            const tPlanetPt = this._mapToScreen.transform(planet);
                             ctx.arc(tPlanetPt.x, tPlanetPt.y, this._mapToScreen.scale, 0, 2 * Math.PI);
                             ctx.fill();
                         }
                     }
                 }
+            }
+        }
+
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+        for (const ship of this._playerData.ships) {
+            if (ship.loc instanceof Planet || ship.loc instanceof Star) {
+                // ship is in orbit, so draw that
+                const orbitR = ship.loc instanceof Planet ? 5 : 10;
+                // draw orbit first
+                ctx.beginPath();
+                const tLoc = this._mapToScreen.transform(ship.loc);
+                ctx.arc(tLoc.x, tLoc.y, orbitR * this._mapToScreen.scale, 0, 2 * Math.PI);
+                ctx.stroke();
+                // now draw planet
+                ctx.beginPath();
+                const phi = ((Date.now() % 10000) / 10000) * 2 * Math.PI;
+                const shipPt = new Point(
+                    ship.loc.x + orbitR * Math.cos(phi),
+                    ship.loc.y + orbitR * Math.sin(phi));
+                const tPlanetPt = this._mapToScreen.transform(shipPt);
+                ctx.arc(tPlanetPt.x, tPlanetPt.y, 0.5 * this._mapToScreen.scale, 0, 2 * Math.PI);
+                ctx.fill();
+            } else {
+                ctx.beginPath();
+                const tLoc = this._mapToScreen.transform(ship.loc);
+                ctx.arc(tLoc.x, tLoc.y, 0.5 * this._mapToScreen.scale, 0, 2 * Math.PI);
+                ctx.fill();
             }
         }
 
