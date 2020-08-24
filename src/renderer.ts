@@ -1,6 +1,6 @@
 import { Transform, Point } from "./2d";
-import { Star, Planet } from "./server/stars";
-import { Ship } from "./server/player";
+import { Star, Planet } from "./client/stars";
+import { Ship } from "./client/player";
 
 interface SectorSource {
     getSectors(sxMin: number, syMin: number, sxMax: number, syMax: number): Star[][][];

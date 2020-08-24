@@ -1,27 +1,15 @@
 import Rand from 'rand-seed';
 import { Vector, distanceSq } from '../2d';
 
-export class Planet {
+export interface Planet {
     id: number;
-    star: Star;
+    starId: number;
     r: number;
     phi: number;
     year: number;
-
-    get x(): number {
-        const period = Math.floor(600000 * this.year);
-        const phi = this.phi + ((Date.now() % period) / period) * 2 * Math.PI;
-        return this.star.x + this.r * Math.cos(phi);
-    }
-
-    get y(): number {
-        const period = Math.floor(600000 * this.year);
-        const phi = this.phi + ((Date.now() % period) / period) * 2 * Math.PI;
-        return this.star.y + this.r * Math.sin(phi);
-    }
 }
 
-export class Star {
+export interface Star {
     id: number;
     x: number;
     y: number;
@@ -41,6 +29,10 @@ export class StarDB {
         this._sectorSize = sectorSize;
         this._starDensity = starDensity;
         this._rand = new Rand(seed);
+    }
+
+    public getStar(id: number): Star|undefined {
+        return this._stars[id];
     }
 
     public getSectors(minX: number, minY: number, maxX?: number, maxY?: number): Star[][][] {
@@ -80,24 +72,25 @@ export class StarDB {
     }
 
     private generateStar(x: number, y: number): Star {
-        const s = new Star();
-        s.id = this._stars.length;
-        s.x = x;
-        s.y = y;
-        s.sx = Math.floor(x / this._sectorSize);
-        s.sy = Math.floor(y / this._sectorSize);
-        s.planets = [];
+        const s: Star = {
+            id: this._stars.length,
+            x, y,
+            sx: Math.floor(x / this._sectorSize),
+            sy: Math.floor(y / this._sectorSize),
+            planets: []
+        };
 
         const counts = [0, 1, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 6, 7];
         const planetCount = counts[Math.floor(this._rand.next() * counts.length)];
         let currentR = 10;
         for (let i = 0; i < planetCount; i++) {
-            const p = new Planet();
-            p.id = i;
-            p.star = s;
-            p.r = currentR + Math.floor(this._rand.next() * 20) + 5;
-            p.phi = this._rand.next() * 2 * Math.PI;
-            p.year = this._rand.next() * 0.8 + 0.2;
+            const p: Planet = {
+                id: i,
+                starId: s.id,
+                r: currentR + Math.floor(this._rand.next() * 20) + 5,
+                phi: this._rand.next() * 2 * Math.PI,
+                year: this._rand.next() * 0.8 + 0.2
+            };
             currentR = p.r;
             s.planets.push(p);
         }

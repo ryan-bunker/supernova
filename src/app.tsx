@@ -8,6 +8,8 @@ import { PlayerInfo } from './server/player';
 import { Renderer } from './renderer';
 import './style.css';
 import { Point } from './2d';
+import { StarsClient } from './client/stars';
+import { PlayerClient } from './client/player';
 
 const MAP_SIZE = 1000,
       SECTOR_SIZE = 1000,
@@ -35,16 +37,21 @@ interface Props extends WithStyles<typeof styles> {
 const App = withStyles(styles)(
     class extends React.Component<Props> {
         private readonly _renderer: Renderer;
+        // server instances
         private readonly _db = StarDB.generateUniverse('stars! is awesome', MAP_SIZE, SECTOR_SIZE, STAR_DENSITY);
-        private readonly _player = PlayerInfo.generatePlayer(this._db);
+        private readonly _playerDb = PlayerInfo.generatePlayer(this._db);
+        // client instances
+        private readonly _starClient = new StarsClient(this._db);
+        private readonly _playerClient = new PlayerClient(this._starClient, this._playerDb);
 
         constructor(props: Props) {
             super(props);
             const canvas = document.getElementById('canvas') as HTMLCanvasElement;
-            this._renderer = new Renderer(canvas, SECTOR_SIZE, this._db, this._player);
+
+            this._renderer = new Renderer(canvas, SECTOR_SIZE, this._starClient, this._playerClient);
 
             this._renderer.transform.scale = 5;
-            const homeworld = this._player.homeworld;
+            const homeworld = this._playerClient.homeworld;
             console.log(homeworld);
             const { x, y } = this._renderer.transform.transform(new Point(homeworld.star.x, homeworld.star.y));
             this._renderer.transform.translateTo(-x + canvas.width / 2, -y + canvas.height / 3);
