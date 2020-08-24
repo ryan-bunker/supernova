@@ -1,4 +1,11 @@
-import Rand, {PRNG} from 'rand-seed';
+import Rand from 'rand-seed';
+import { Vector, distanceSq } from '../2d';
+
+export type Planet = {
+    id: number,
+    r: number,
+    phi: number
+}
 
 export type Star = {
     id: number,
@@ -6,6 +13,7 @@ export type Star = {
     y: number,
     sx: number,
     sy: number,
+    planets: Planet[]
 };
 
 export class StarDB {
@@ -55,12 +63,27 @@ export class StarDB {
     }
 
     private generateStar(x: number, y: number): Star {
-        const s = {
+        const s: Star = {
             id: this._stars.length,
             x, y,
             sx: Math.floor(x / this._sectorSize),
-            sy: Math.floor(y / this._sectorSize)
+            sy: Math.floor(y / this._sectorSize),
+            planets: []
         };
+
+        const counts = [0, 1, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 6, 7];
+        const planetCount = counts[Math.floor(this._rand.next() * counts.length)];
+        let currentR = 10;
+        for (let i=0; i<planetCount; i++) {
+            const p: Planet = {
+                id: i,
+                r: currentR + Math.floor(this._rand.next() * 20) + 5,
+                phi: this._rand.next() * 2 * Math.PI
+            }
+            currentR = p.r;
+            s.planets.push(p);
+        }
+
         this._stars.push(s);
         return s;
     }
@@ -73,8 +96,21 @@ export class StarDB {
 
         // generate 'count' random stars with random positions
         for (let i = 0; i < count; i++) {
-            const x = Math.floor((this._rand.next() + sx) * this._sectorSize);
-            const y = Math.floor((this._rand.next() + sy) * this._sectorSize);
+            let x: number, y: number;
+            while (true) {
+                x = Math.floor((this._rand.next() + sx) * this._sectorSize);
+                y = Math.floor((this._rand.next() + sy) * this._sectorSize);
+                let overlaps = false;
+                for (const starIdx of sector) {
+                    const otherStar = this._stars[starIdx];
+                    const v = new Vector({x, y}, otherStar);
+                    if (distanceSq({x, y}, otherStar) < 175 * 175) {
+                        overlaps = true;
+                        break;
+                    }
+                }
+                if (!overlaps) break;       
+            }
             const s = this.generateStar(x, y);
             sector.push(s.id);
         }
@@ -83,29 +119,29 @@ export class StarDB {
         // the average of all vectors to each other star in the sector, weighted
         // by distance (closer stars have more of an effect), then move the star
         // 50% of the average.
-        for (const starIdx of sector) {
-            const star = this._stars[starIdx];
-            const avg = { x: 0, y: 0 };
+        // for (const starIdx of sector) {
+        //     const star = this._stars[starIdx];
+        //     const avg = { x: 0, y: 0 };
 
-            for (const otherStarIdx of sector) {
-                const otherStar = this._stars[otherStarIdx];
-                if (star.id === otherStar.id) continue;  // skip ourselves
+        //     for (const otherStarIdx of sector) {
+        //         const otherStar = this._stars[otherStarIdx];
+        //         if (star.id === otherStar.id) continue;  // skip ourselves
 
-                // get vector and magnitude from star to otherStar
-                const v = { x: otherStar.x - star.x, y: otherStar.y - star.y };
-                const d = Math.sqrt(v.x * v.x + v.y * v.y);
-                // add vector into running total, weight by distance
-                avg.x += v.x / d;
-                avg.y += v.y / d;
-            }
-            // calculate average
-            avg.x = avg.x / (sector.length - 1);
-            avg.y = avg.y / (sector.length - 1);
+        //         // get vector and magnitude from star to otherStar
+        //         const v = { x: otherStar.x - star.x, y: otherStar.y - star.y };
+        //         const d = Math.sqrt(v.x * v.x + v.y * v.y);
+        //         // add vector into running total, weight by distance
+        //         avg.x += v.x / d;
+        //         avg.y += v.y / d;
+        //     }
+        //     // calculate average
+        //     avg.x = avg.x / (sector.length - 1);
+        //     avg.y = avg.y / (sector.length - 1);
 
-            // move our star along the average vector 50%
-            star.x += avg.x * 0.5;
-            star.y += avg.y * 0.5;
-        }
+        //     // move our star along the average vector 50%
+        //     star.x += avg.x * 0.5;
+        //     star.y += avg.y * 0.5;
+        // }
 
         return sector;
     }

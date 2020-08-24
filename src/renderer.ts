@@ -42,11 +42,6 @@ export class Renderer {
 
         ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
 
-        ctx.strokeStyle = "gray";
-        ctx.fillStyle = "gray";
-        ctx.setLineDash([10, 10]);
-        ctx.font = "16px Courier New";
-
         const sectors = this._sectorSource.getSectors(tlSect.x, tlSect.y, brSect.x, brSect.y);
 
         for (let sx = tlSect.x; sx < brSect.x; sx++) {
@@ -58,19 +53,48 @@ export class Renderer {
                 if (!sectY) continue;
 
                 if (this.renderSectorGrid) {
+                    ctx.strokeStyle = "gray";
+                    ctx.fillStyle = "gray";
+                    ctx.setLineDash([10, 10]);
+                    ctx.font = "16px Courier New";
+            
                     const tlSect = this._mapToScreen.transform({ x: sx * this._sectorSize, y: sy * this._sectorSize });
                     const brSect = this._mapToScreen.transform({ x: (sx + 1) * this._sectorSize, y: (sy + 1) * this._sectorSize });
                     ctx.strokeRect(tlSect.x, tlSect.y, brSect.x - tlSect.x, brSect.y - tlSect.y);
                     ctx.fillText(`${sx}:${sy}`, tlSect.x + 4, tlSect.y + 20);
+
+                    ctx.setLineDash([]);
                 }
 
                 for (const star of sectY) {
                     const tp = this._mapToScreen.transform(star);
                     ctx.fillStyle = "white";
                     ctx.beginPath();
-                    const r = 5 * this._mapToScreen.scale;
-                    ctx.arc(tp.x, tp.y, r, 0, 2 * Math.PI);
+                    ctx.arc(tp.x, tp.y, 5 * this._mapToScreen.scale, 0, 2 * Math.PI);
                     ctx.fill();
+
+                    for (const planet of star.planets) {
+                        // alpha based on scale
+                        // scale [min, 1.0] -> alpha 0.0
+                        // scale [1.0, 2.0] -> alpha (linear)
+                        // scale [2.0, max] -> alpha 1.0
+                        const alpha = Math.max(0, Math.min(this._mapToScreen.scale - 1.0, 1.0));
+                        ctx.strokeStyle = `rgba(37, 37, 37, ${alpha})`;
+                        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+
+                        // draw orbit first
+                        ctx.beginPath();
+                        ctx.arc(tp.x, tp.y, planet.r * this._mapToScreen.scale, 0, 2 * Math.PI);
+                        ctx.stroke();
+                        // now draw planet
+                        ctx.beginPath();
+                        const planetPt = new Point(
+                            star.x + planet.r * Math.cos(planet.phi),
+                            star.y + planet.r * Math.sin(planet.phi));
+                        const tPlanetPt = this._mapToScreen.transform(planetPt);
+                        ctx.arc(tPlanetPt.x, tPlanetPt.y, this._mapToScreen.scale, 0, 2 * Math.PI);
+                        ctx.fill();
+                    }
                 }
             }
         }

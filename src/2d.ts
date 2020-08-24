@@ -12,6 +12,20 @@ export class Point {
     }
 }
 
+export class Vector extends Point {
+    constructor(start: Point, end: Point) {
+        super(end.x - start.x, end.y - start.y);
+    }
+
+    get length(): number {
+        return Math.sqrt(this.lengthSq);
+    }
+
+    get lengthSq(): number {
+        return this.x * this.x + this.y * this.y;
+    }
+}
+
 export class Transform {
     private _offset: Point;
     public scale: number;
@@ -41,4 +55,12 @@ export class Transform {
             (point.x - this._offset.x) / this.scale,
             (point.y - this._offset.y) / this.scale);
     }
+}
+
+export function distance(a: Point, b: Point): number {
+    return new Vector(a, b).length;
+}
+
+export function distanceSq(a: Point, b: Point): number {
+    return new Vector(a, b).lengthSq;
 }

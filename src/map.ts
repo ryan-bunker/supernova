@@ -4,8 +4,8 @@ import { Renderer } from './renderer';
 import { Point } from './2d';
 
 const MAP_SIZE = 1000,
-      SECTOR_SIZE = 500,
-      STAR_DENSITY = 15;
+      SECTOR_SIZE = 1000,
+      STAR_DENSITY = 10;
 const db = StarDB.generateUniverse('stars! is awesome', MAP_SIZE, SECTOR_SIZE, STAR_DENSITY);
 
 function resize_canvas() {
@@ -54,7 +54,7 @@ window.onload = function() {
 
     canvas.addEventListener('wheel', (e) => {
         const oldScale = renderer.transform.scale;
-        const newScale = Math.max(0.3, Math.min(renderer.transform.scale + (renderer.transform.scale * 0.005) * e.deltaY, 30));
+        const newScale = Math.max(0.15, Math.min(renderer.transform.scale + (renderer.transform.scale * 0.005) * e.deltaY, 30));
         const zoomPoint = renderer.transform.untransform(new Point(e.clientX, e.clientY));
         const scaleDelta = newScale - oldScale;
 
