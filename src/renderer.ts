@@ -17,7 +17,7 @@ export class Renderer {
     private readonly _sectorSource: SectorSource;
     private readonly _playerData: PlayerData;
     private readonly _mapToScreen: Transform;
-    private _lastMouseCoord: Point|null;
+    private _lastMouseCoord: Point | null;
     private _lastFrame: number;
 
     constructor(canvas: HTMLCanvasElement, sectorSize: number, sectorSource: SectorSource, playerData: PlayerData) {
@@ -92,7 +92,7 @@ export class Renderer {
                     ctx.fillStyle = "gray";
                     ctx.setLineDash([10, 10]);
                     ctx.font = "16px Courier New";
-            
+
                     const tlSect = this._mapToScreen.transform({ x: sx * this._sectorSize, y: sy * this._sectorSize });
                     const brSect = this._mapToScreen.transform({ x: (sx + 1) * this._sectorSize, y: (sy + 1) * this._sectorSize });
                     ctx.strokeRect(tlSect.x, tlSect.y, brSect.x - tlSect.x, brSect.y - tlSect.y);
