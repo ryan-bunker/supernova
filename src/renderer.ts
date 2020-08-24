@@ -1,22 +1,28 @@
 import { Transform, Point } from "./2d";
-import { Star } from "./server/stars";
+import { Star, Planet } from "./server/stars";
 
 interface SectorSource {
     getSectors(sxMin: number, syMin: number, sxMax: number, syMax: number): Star[][][];
+}
+
+interface PlayerData {
+    homeworld: Planet;
 }
 
 export class Renderer {
     private readonly _canvas: HTMLCanvasElement;
     private readonly _sectorSize: number;
     private readonly _sectorSource: SectorSource;
+    private readonly _playerData: PlayerData;
     private readonly _mapToScreen: Transform;
     private _lastMouseCoord: Point|null;
 
-    constructor(canvas: HTMLCanvasElement, sectorSize: number, sectorSource: SectorSource) {
+    constructor(canvas: HTMLCanvasElement, sectorSize: number, sectorSource: SectorSource, playerData: PlayerData) {
         this._canvas = canvas;
         this._sectorSize = sectorSize;
         this._sectorSource = sectorSource;
-        this._mapToScreen = new Transform(canvas.width / 2, canvas.height / 2);
+        this._playerData = playerData;
+        this._mapToScreen = new Transform(0, 0, 1);
 
         // size the canvas to fill the entire window
         this._canvas.width = window.innerWidth;
@@ -62,11 +68,11 @@ export class Renderer {
 
         const sectors = this._sectorSource.getSectors(tlSect.x, tlSect.y, brSect.x, brSect.y);
 
-        for (let sx = tlSect.x; sx < brSect.x; sx++) {
+        for (let sx = tlSect.x; sx <= brSect.x; sx++) {
             const sectX = sectors[sx];
             if (!sectX) continue;
 
-            for (let sy = tlSect.y; sy < brSect.y; sy++) {
+            for (let sy = tlSect.y; sy <= brSect.y; sy++) {
                 const sectY = sectX[sy];
                 if (!sectY) continue;
 
@@ -86,9 +92,9 @@ export class Renderer {
 
                 for (const star of sectY) {
                     const tp = this._mapToScreen.transform(star);
-                    ctx.fillStyle = "white";
+                    ctx.fillStyle = "white"; //this._playerData.homeworld.star.id === star.id ? "blue" : "white";
                     ctx.beginPath();
-                    ctx.arc(tp.x, tp.y, 5 * this._mapToScreen.scale, 0, 2 * Math.PI);
+                    ctx.arc(tp.x, tp.y, Math.max(3, 5 * this._mapToScreen.scale), 0, 2 * Math.PI);
                     ctx.fill();
 
                     for (const planet of star.planets) {
@@ -98,7 +104,11 @@ export class Renderer {
                         // scale [2.0, max] -> alpha 1.0
                         const alpha = Math.max(0, Math.min(this._mapToScreen.scale - 1.0, 1.0));
                         ctx.strokeStyle = `rgba(37, 37, 37, ${alpha})`;
-                        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                        if (this._playerData.homeworld.star.id === star.id && this._playerData.homeworld.id == planet.id) {
+                            ctx.fillStyle = `rgba(0, 0, 255, ${alpha})`;
+                        } else {
+                            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                        }
 
                         // draw orbit first
                         ctx.beginPath();

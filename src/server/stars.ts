@@ -3,6 +3,7 @@ import { Vector, distanceSq } from '../2d';
 
 export type Planet = {
     id: number,
+    star: Star,
     r: number,
     phi: number
 }
@@ -29,11 +30,14 @@ export class StarDB {
         this._rand = new Rand(seed);
     }
 
-    public getSectors(minX: number, minY: number, maxX: number, maxY: number): Star[][][] {
+    public getSectors(minX: number, minY: number, maxX?: number, maxY?: number): Star[][][] {
+        if (maxX === undefined) maxX = minX;
+        if (maxY === undefined) maxY = minY;
+
         const block: Star[][][] = [];
-        for (let sx = minX; sx < maxX; sx++) {
+        for (let sx = minX; sx <= maxX; sx++) {
             block[sx] = [];
-            for (let sy = minY; sy < maxY; sy++) {
+            for (let sy = minY; sy <= maxY; sy++) {
                 block[sx][sy] = this.getSectorStars(sx, sy);
             }
         }
@@ -77,6 +81,7 @@ export class StarDB {
         for (let i=0; i<planetCount; i++) {
             const p: Planet = {
                 id: i,
+                star: s,
                 r: currentR + Math.floor(this._rand.next() * 20) + 5,
                 phi: this._rand.next() * 2 * Math.PI
             }

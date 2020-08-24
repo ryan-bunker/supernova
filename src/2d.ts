@@ -44,6 +44,11 @@ export class Transform {
         this._offset.y += y;
     }
 
+    translateTo(x: number, y: number): void {
+        this._offset.x = x;
+        this._offset.y = y;
+    }
+
     public transform(point: Point): Point {
         return new Point(
             point.x * this.scale + this._offset.x,
