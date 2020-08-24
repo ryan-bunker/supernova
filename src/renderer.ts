@@ -196,7 +196,7 @@ export class Renderer {
 
     private mouseWheel(e: WheelEvent): void {
         const oldScale = this._mapToScreen.scale;
-        const newScale = Math.max(0.15, Math.min(this._mapToScreen.scale + (this._mapToScreen.scale * 0.005) * e.deltaY, 30));
+        const newScale = Math.max(0.15, Math.min(this._mapToScreen.scale + (this._mapToScreen.scale * 0.005) * -e.deltaY, 30));
         const zoomPoint = this._mapToScreen.untransform(new Point(e.clientX, e.clientY));
         const scaleDelta = newScale - oldScale;
 
