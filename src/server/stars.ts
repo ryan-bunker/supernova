@@ -5,7 +5,8 @@ export type Planet = {
     id: number,
     star: Star,
     r: number,
-    phi: number
+    phi: number,
+    year: number
 }
 
 export type Star = {
@@ -83,7 +84,8 @@ export class StarDB {
                 id: i,
                 star: s,
                 r: currentR + Math.floor(this._rand.next() * 20) + 5,
-                phi: this._rand.next() * 2 * Math.PI
+                phi: this._rand.next() * 2 * Math.PI,
+                year: this._rand.next() * 0.8 + 0.2
             }
             currentR = p.r;
             s.planets.push(p);

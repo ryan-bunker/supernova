@@ -101,31 +101,35 @@ export class Renderer {
                     ctx.arc(tp.x, tp.y, Math.max(3, 5 * this._mapToScreen.scale), 0, 2 * Math.PI);
                     ctx.fill();
 
-                    for (const planet of star.planets) {
-                        // alpha based on scale
-                        // scale [min, 1.0] -> alpha 0.0
-                        // scale [1.0, 2.0] -> alpha (linear)
-                        // scale [2.0, max] -> alpha 1.0
-                        const alpha = Math.max(0, Math.min(this._mapToScreen.scale - 1.0, 1.0));
-                        ctx.strokeStyle = `rgba(37, 37, 37, ${alpha})`;
-                        if (this._playerData.homeworld.star.id === star.id && this._playerData.homeworld.id == planet.id) {
-                            ctx.fillStyle = `rgba(0, 0, 255, ${alpha})`;
-                        } else {
-                            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-                        }
+                    const alpha = Math.max(0, Math.min((this._mapToScreen.scale - 0.5) / 1.5, 1.0));
+                    if (alpha > 0) {
+                        for (const planet of star.planets) {
+                            // alpha based on scale
+                            // scale [min, 1.0] -> alpha 0.0
+                            // scale [1.0, 2.0] -> alpha (linear)
+                            // scale [2.0, max] -> alpha 1.0
+                            ctx.strokeStyle = `rgba(37, 37, 37, ${alpha})`;
+                            if (this._playerData.homeworld.star.id === star.id && this._playerData.homeworld.id == planet.id) {
+                                ctx.fillStyle = `rgba(0, 0, 255, ${alpha})`;
+                            } else {
+                                ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                            }
 
-                        // draw orbit first
-                        ctx.beginPath();
-                        ctx.arc(tp.x, tp.y, planet.r * this._mapToScreen.scale, 0, 2 * Math.PI);
-                        ctx.stroke();
-                        // now draw planet
-                        ctx.beginPath();
-                        const planetPt = new Point(
-                            star.x + planet.r * Math.cos(planet.phi),
-                            star.y + planet.r * Math.sin(planet.phi));
-                        const tPlanetPt = this._mapToScreen.transform(planetPt);
-                        ctx.arc(tPlanetPt.x, tPlanetPt.y, this._mapToScreen.scale, 0, 2 * Math.PI);
-                        ctx.fill();
+                            // draw orbit first
+                            ctx.beginPath();
+                            ctx.arc(tp.x, tp.y, planet.r * this._mapToScreen.scale, 0, 2 * Math.PI);
+                            ctx.stroke();
+                            // now draw planet
+                            ctx.beginPath();
+                            const period = Math.floor(60000 * planet.year);
+                            const phi = planet.phi + ((Date.now() % period) / period) * 2 * Math.PI;
+                            const planetPt = new Point(
+                                star.x + planet.r * Math.cos(phi),
+                                star.y + planet.r * Math.sin(phi));
+                            const tPlanetPt = this._mapToScreen.transform(planetPt);
+                            ctx.arc(tPlanetPt.x, tPlanetPt.y, this._mapToScreen.scale, 0, 2 * Math.PI);
+                            ctx.fill();
+                        }
                     }
                 }
             }
