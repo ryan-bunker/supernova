@@ -16,6 +16,7 @@ export class Renderer {
     private readonly _playerData: PlayerData;
     private readonly _mapToScreen: Transform;
     private _lastMouseCoord: Point|null;
+    private _lastFrame: number;
 
     constructor(canvas: HTMLCanvasElement, sectorSize: number, sectorSource: SectorSource, playerData: PlayerData) {
         this._canvas = canvas;
@@ -50,6 +51,9 @@ export class Renderer {
     public renderDebugText: boolean = true;
 
     public render(): void {
+        const fps = 1000 / (Date.now() - this._lastFrame);
+        this._lastFrame = Date.now();
+
         const ctx = this._canvas.getContext('2d');
 
         // project screen viewport into map coordinates
@@ -134,7 +138,10 @@ export class Renderer {
             ctx.fillText(`   scale: ${this._mapToScreen.scale.toFixed(3)}`, 10, 32);
             ctx.fillText(`viewport: ${tlMap}, ${brMap}`, 10, 48);
             ctx.fillText(` sectors: ${tlSect}, ${brSect}`, 10, 64);
+            ctx.fillText(`  ${fps.toFixed(1)} FPS`, 10, 80);
         }
+
+        window.requestAnimationFrame(() => this.render());
     }
 
     private mouseDown(e: MouseEvent): void {
@@ -155,7 +162,6 @@ export class Renderer {
         const deltaX = e.clientX - this._lastMouseCoord.x;
         const deltaY = e.clientY - this._lastMouseCoord.y;
         this._mapToScreen.translate(deltaX, deltaY);
-        this.render();
 
         this._lastMouseCoord = new Point(e.clientX, e.clientY);
     }
@@ -168,7 +174,6 @@ export class Renderer {
 
         this._mapToScreen.scale = newScale;
         this._mapToScreen.translate(-zoomPoint.x * scaleDelta, -zoomPoint.y * scaleDelta);
-        this.render();
     }
 
     private keyUp(e: KeyboardEvent): void {
@@ -179,10 +184,6 @@ export class Renderer {
             case 'KeyX':
                 this.renderDebugText = !this.renderDebugText;
                 break;
-            default:
-                // we don't wwant to render if any other key was pressed
-                return;
         }
-        this.render();
     }
 }

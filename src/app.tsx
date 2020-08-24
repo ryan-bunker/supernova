@@ -52,7 +52,7 @@ const App = withStyles(styles)(
 
         render() {
             const { classes } = this.props;
-            this._renderer.render();
+            window.requestAnimationFrame(() => this._renderer.render());
             return (
                 <Grid container spacing={3} className={classes.footer}>
                     <Grid item xs={12}>
