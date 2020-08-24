@@ -10,12 +10,30 @@ export class Renderer {
     private readonly _sectorSize: number;
     private readonly _sectorSource: SectorSource;
     private readonly _mapToScreen: Transform;
+    private _lastMouseCoord: Point|null;
 
     constructor(canvas: HTMLCanvasElement, sectorSize: number, sectorSource: SectorSource) {
         this._canvas = canvas;
         this._sectorSize = sectorSize;
         this._sectorSource = sectorSource;
         this._mapToScreen = new Transform(canvas.width / 2, canvas.height / 2);
+
+        // size the canvas to fill the entire window
+        this._canvas.width = window.innerWidth;
+        this._canvas.height = window.innerHeight;
+
+        window.addEventListener('resize', () => {
+            // whenever the browser gets resized we need to update our canvas
+            this._canvas.width = window.innerWidth;
+            this._canvas.height = window.innerHeight;
+            this.render();
+        });
+        window.addEventListener('contextmenu', e => e.preventDefault());
+        this._canvas.addEventListener('mousedown', e => this.mouseDown(e));
+        this._canvas.addEventListener('mouseup', e => this.mouseUp(e));
+        this._canvas.addEventListener('mousemove', e => this.mouseMove(e));
+        this._canvas.addEventListener('wheel', e => this.mouseWheel(e));
+        window.addEventListener('keyup', e => this.keyUp(e));
     }
 
     get transform(): Transform {
@@ -107,5 +125,54 @@ export class Renderer {
             ctx.fillText(`viewport: ${tlMap}, ${brMap}`, 10, 48);
             ctx.fillText(` sectors: ${tlSect}, ${brSect}`, 10, 64);
         }
+    }
+
+    private mouseDown(e: MouseEvent): void {
+        if (e.buttons == 2) {
+            this._lastMouseCoord = new Point(e.clientX, e.clientY);
+        }
+    }
+
+    private mouseUp(e: MouseEvent): void {
+        this._lastMouseCoord = null;
+    }
+
+    private mouseMove(e: MouseEvent): void {
+        if (!this._lastMouseCoord || e.buttons != 2) {
+            return;
+        }
+
+        const deltaX = e.clientX - this._lastMouseCoord.x;
+        const deltaY = e.clientY - this._lastMouseCoord.y;
+        this._mapToScreen.translate(deltaX, deltaY);
+        this.render();
+
+        this._lastMouseCoord = new Point(e.clientX, e.clientY);
+    }
+
+    private mouseWheel(e: WheelEvent): void {
+        const oldScale = this._mapToScreen.scale;
+        const newScale = Math.max(0.15, Math.min(this._mapToScreen.scale + (this._mapToScreen.scale * 0.005) * e.deltaY, 30));
+        const zoomPoint = this._mapToScreen.untransform(new Point(e.clientX, e.clientY));
+        const scaleDelta = newScale - oldScale;
+
+        this._mapToScreen.scale = newScale;
+        this._mapToScreen.translate(-zoomPoint.x * scaleDelta, -zoomPoint.y * scaleDelta);
+        this.render();
+    }
+
+    private keyUp(e: KeyboardEvent): void {
+        switch (e.code) {
+            case 'KeyG':
+                this.renderSectorGrid = !this.renderSectorGrid;
+                break;
+            case 'KeyX':
+                this.renderDebugText = !this.renderDebugText;
+                break;
+            default:
+                // we don't wwant to render if any other key was pressed
+                return;
+        }
+        this.render();
     }
 }
