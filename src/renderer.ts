@@ -132,30 +132,32 @@ export class Renderer {
             }
         }
 
-        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-        for (const ship of this._playerData.ships) {
-            if (ship.loc instanceof Planet || ship.loc instanceof Star) {
-                // ship is in orbit, so draw that
-                const orbitR = ship.loc instanceof Planet ? 5 : 10;
-                // draw orbit first
-                ctx.beginPath();
-                const tLoc = this._mapToScreen.transform(ship.loc);
-                ctx.arc(tLoc.x, tLoc.y, orbitR * this._mapToScreen.scale, 0, 2 * Math.PI);
-                ctx.stroke();
-                // now draw planet
-                ctx.beginPath();
-                const phi = ((Date.now() % 10000) / 10000) * 2 * Math.PI;
-                const shipPt = new Point(
-                    ship.loc.x + orbitR * Math.cos(phi),
-                    ship.loc.y + orbitR * Math.sin(phi));
-                const tPlanetPt = this._mapToScreen.transform(shipPt);
-                ctx.arc(tPlanetPt.x, tPlanetPt.y, 0.5 * this._mapToScreen.scale, 0, 2 * Math.PI);
-                ctx.fill();
-            } else {
-                ctx.beginPath();
-                const tLoc = this._mapToScreen.transform(ship.loc);
-                ctx.arc(tLoc.x, tLoc.y, 0.5 * this._mapToScreen.scale, 0, 2 * Math.PI);
-                ctx.fill();
+        if (alpha > 0) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            for (const ship of this._playerData.ships) {
+                if (ship.loc instanceof Planet || ship.loc instanceof Star) {
+                    // ship is in orbit, so draw that
+                    const orbitR = ship.loc instanceof Planet ? 5 : 10;
+                    // draw orbit first
+                    ctx.beginPath();
+                    const tLoc = this._mapToScreen.transform(ship.loc);
+                    ctx.arc(tLoc.x, tLoc.y, orbitR * this._mapToScreen.scale, 0, 2 * Math.PI);
+                    ctx.stroke();
+                    // now draw planet
+                    ctx.beginPath();
+                    const phi = ((Date.now() % 10000) / 10000) * 2 * Math.PI;
+                    const shipPt = new Point(
+                        ship.loc.x + orbitR * Math.cos(phi),
+                        ship.loc.y + orbitR * Math.sin(phi));
+                    const tPlanetPt = this._mapToScreen.transform(shipPt);
+                    ctx.arc(tPlanetPt.x, tPlanetPt.y, 0.5 * this._mapToScreen.scale, 0, 2 * Math.PI);
+                    ctx.fill();
+                } else {
+                    ctx.beginPath();
+                    const tLoc = this._mapToScreen.transform(ship.loc);
+                    ctx.arc(tLoc.x, tLoc.y, 0.5 * this._mapToScreen.scale, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
             }
         }
 
