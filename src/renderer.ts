@@ -39,7 +39,7 @@ export class Renderer {
             this._canvas.height = window.innerHeight;
             this.render();
         });
-        window.addEventListener('contextmenu', e => e.preventDefault());
+        this._canvas.addEventListener('contextmenu', e => e.preventDefault());
         this._canvas.addEventListener('mousedown', e => this.mouseDown(e));
         this._canvas.addEventListener('mouseup', e => this.mouseUp(e));
         this._canvas.addEventListener('mousemove', e => this.mouseMove(e));

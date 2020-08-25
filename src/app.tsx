@@ -1,6 +1,6 @@
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
-import { createStyles, Theme, WithStyles, withStyles } from '@material-ui/core/styles';
+import { createStyles, Theme, WithStyles, withStyles, createMuiTheme } from '@material-ui/core/styles';
 import Paper from '@material-ui/core/Paper';
 import Grid from '@material-ui/core/Grid';
 import { StarDB } from './server/stars';
@@ -10,10 +10,34 @@ import './style.css';
 import { Point } from './2d';
 import { StarsClient } from './client/stars';
 import { PlayerClient } from './client/player';
+import { Card, MuiThemeProvider } from '@material-ui/core';
+import MessageList from './message_list';
+import CssBaseline from '@material-ui/core/CssBaseline';
 
 const MAP_SIZE = 1000,
       SECTOR_SIZE = 1000,
       STAR_DENSITY = 10;
+
+const rootData = {
+    messages: [
+        "Tip: You can hide unimportant messages by clicking the checkmark in the messages titlebar. You can reshow these messages at any time by clicking on the magnifying glass in the titlebar.",
+        "Tip: To add waypoints, select a ship, then click on the desired destination while holding down the Shift key. You can also drag existing waypoints to move them to a new location.",
+        "Tip: To design your own ships, press 'F4', select 'Available Hull Types', pick one from the dropdown, and hit the 'Copy' button.",
+        "Tip: Popup help is available over many of the displayed statistics. For example you can click on planet statistics in the summary window to get additional details.",
+        "Your home planet is Crabby. Your people are ready to leave the nest and explore the universe. Good luck.",
+        "More",
+        "Messages",
+        "To",
+        "Test",
+        "With"
+    ]
+}
+
+const darkTheme = createMuiTheme({
+    palette: {
+      type: 'dark',
+    },
+  });
 
 const styles = (theme: Theme) =>
     createStyles({
@@ -27,7 +51,11 @@ const styles = (theme: Theme) =>
         },
         footer: {
             position: 'fixed',
-            bottom: 50
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: theme.spacing(2),
+            height: '33%',
         }
     });
 
@@ -61,32 +89,26 @@ const App = withStyles(styles)(
             const { classes } = this.props;
             window.requestAnimationFrame(() => this._renderer.render());
             return (
-                <Grid container spacing={3} className={classes.footer}>
-                    <Grid item xs={12}>
-                        <Paper className={classes.paper}>xs=12</Paper>
+                <div className={classes.footer}>
+                    <Grid container spacing={3} style={{height: 'calc(100% + 24px)'}}>
+                        <Grid item xs={4} style={{height: '100%'}}>
+                            <MessageList messages={rootData.messages} />
+                        </Grid>
+                        <Grid item xs={4}>
+                            <Card className={classes.paper}>xs=3</Card>
+                        </Grid>
+                        <Grid item xs={4}>
+                            <Card className={classes.paper}>xs=3</Card>
+                        </Grid>
                     </Grid>
-                    <Grid item xs={6}>
-                        <Paper className={classes.paper}>xs=6</Paper>
-                    </Grid>
-                    <Grid item xs={6}>
-                        <Paper className={classes.paper}>xs=6</Paper>
-                    </Grid>
-                    <Grid item xs={3}>
-                        <Paper className={classes.paper}>xs=3</Paper>
-                    </Grid>
-                    <Grid item xs={3}>
-                        <Paper className={classes.paper}>xs=3</Paper>
-                    </Grid>
-                    <Grid item xs={3}>
-                        <Paper className={classes.paper}>xs=3</Paper>
-                    </Grid>
-                    <Grid item xs={3}>
-                        <Paper className={classes.paper}>xs=3</Paper>
-                    </Grid>
-                </Grid>
+                </div>
             );
         }
     });
 
 let domContainer = document.querySelector('#app-root');
-ReactDOM.render(<App />, domContainer);
+ReactDOM.render(
+    <MuiThemeProvider theme={darkTheme}>
+        <CssBaseline />
+        <App />
+    </MuiThemeProvider>, domContainer);
