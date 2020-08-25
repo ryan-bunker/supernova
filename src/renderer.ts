@@ -11,6 +11,8 @@ interface PlayerData {
     ships: Readonly<Ship[]>;
 }
 
+const ShipPath = new Path2D('M-30.55555,40.55594    c0,-46.80785 12.93585,-116.94444 30.27778,-116.94444    c17.34193,0 30.83333,69.02548 30.83333,115.83333    c0,46.80786 -12.93585,36.94445 -30.27777,36.94445    c-17.34193,0 -30.83334,10.97452 -30.83334,-35.83334    z M-55.277758,63.055949c0,-25.16882 25.60773,-45.55556 57.22222,-45.55556c31.61449,0 57.22222,20.38674 57.22222,45.55556c0,25.16881 -23.38551,-9.44445 -55,-9.44445c-31.61448,0 -59.44444,34.61326 -59.44444,9.44445z');
+
 export class Renderer {
     private readonly _canvas: HTMLCanvasElement;
     private readonly _sectorSize: number;
@@ -139,24 +141,31 @@ export class Renderer {
                     // ship is in orbit, so draw that
                     const orbitR = ship.loc instanceof Planet ? 5 : 10;
                     // draw orbit first
-                    ctx.beginPath();
                     const tLoc = this._mapToScreen.transform(ship.loc);
+                    ctx.beginPath();
                     ctx.arc(tLoc.x, tLoc.y, orbitR * this._mapToScreen.scale, 0, 2 * Math.PI);
                     ctx.stroke();
-                    // now draw planet
-                    ctx.beginPath();
+                    // now draw ship
                     const phi = ((Date.now() % 10000) / 10000) * 2 * Math.PI;
                     const shipPt = new Point(
                         ship.loc.x + orbitR * Math.cos(phi),
                         ship.loc.y + orbitR * Math.sin(phi));
                     const tPlanetPt = this._mapToScreen.transform(shipPt);
-                    ctx.arc(tPlanetPt.x, tPlanetPt.y, 0.5 * this._mapToScreen.scale, 0, 2 * Math.PI);
-                    ctx.fill();
+                    ctx.save();
+                    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                    ctx.translate(tPlanetPt.x, tPlanetPt.y);
+                    ctx.scale(0.01 * this._mapToScreen.scale, -0.01 * this._mapToScreen.scale);
+                    ctx.rotate(-phi);
+                    ctx.fill(ShipPath);
+                    ctx.restore();
                 } else {
-                    ctx.beginPath();
                     const tLoc = this._mapToScreen.transform(ship.loc);
-                    ctx.arc(tLoc.x, tLoc.y, 0.5 * this._mapToScreen.scale, 0, 2 * Math.PI);
-                    ctx.fill();
+                    ctx.save();
+                    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                    ctx.translate(tLoc.x, tLoc.y);
+                    ctx.scale(0.01 * this._mapToScreen.scale, -0.01 * this._mapToScreen.scale);
+                    ctx.fill(ShipPath);
+                    ctx.restore();
                 }
             }
         }
