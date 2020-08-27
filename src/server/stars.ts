@@ -1,16 +1,17 @@
 import Rand from 'rand-seed';
 import { Vector, distanceSq } from '../2d';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface Planet {
-    id: number;
-    starId: number;
+    id: string;
+    starId: string;
     r: number;
     phi: number;
     year: number;
 }
 
 export interface Star {
-    id: number;
+    id: string;
     x: number;
     y: number;
     sx: number;
@@ -19,8 +20,8 @@ export interface Star {
 }
 
 export class StarDB {
-    private readonly _stars: Star[] = [];
-    private readonly _sectors: number[][][] = [];
+    private readonly _stars: { [id: string]: Star } = {};
+    private readonly _sectors: string[][][] = [];
     private readonly _sectorSize: number;
     private readonly _starDensity: number;
     private readonly _rand: { next: () => number };
@@ -73,7 +74,7 @@ export class StarDB {
 
     private generateStar(x: number, y: number): Star {
         const s: Star = {
-            id: this._stars.length,
+            id: uuidv4(),
             x, y,
             sx: Math.floor(x / this._sectorSize),
             sy: Math.floor(y / this._sectorSize),
@@ -85,7 +86,7 @@ export class StarDB {
         let currentR = 10;
         for (let i = 0; i < planetCount; i++) {
             const p: Planet = {
-                id: i,
+                id: uuidv4(),
                 starId: s.id,
                 r: currentR + Math.floor(this._rand.next() * 20) + 5,
                 phi: this._rand.next() * 2 * Math.PI,
@@ -95,14 +96,14 @@ export class StarDB {
             s.planets.push(p);
         }
 
-        this._stars.push(s);
+        this._stars[s.id] = s;
         return s;
     }
 
-    private generateSector(sx: number, sy: number): number[] {
+    private generateSector(sx: number, sy: number): string[] {
         // each sector has +/-10% of _starDensity
         const count = Math.floor(this._rand.next() * 2 * this._starDensity * 0.1 + this._starDensity * 0.9);
-        const sector: number[] = [];
+        const sector: string[] = [];
         console.log(`Generating sector (${sx}, ${sy}) with ${count} stars`);
 
         // generate 'count' random stars with random positions

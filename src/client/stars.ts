@@ -2,7 +2,7 @@ import * as server from "../server/stars";
 import * as _ from "lodash";
 
 export class Planet {
-    id: number;
+    id: string;
     star: Star;
     r: number;
     phi: number;
@@ -22,7 +22,7 @@ export class Planet {
 }
 
 export class Star {
-    id: number;
+    id: string;
     x: number;
     y: number;
     sx: number;
@@ -37,14 +37,14 @@ export class StarsClient {
         this._db = db;
     }
 
-    getStar(id: number): Star|undefined {
+    getStar(id: string): Star|undefined {
         const s = this._db.getStar(id);
         if (s === undefined)
             return undefined;
         return this.mapStar(s);
     }
 
-    getPlanet(starId: number, planetId: number): Planet|undefined {
+    getPlanet(starId: string, planetId: string): Planet|undefined {
         const s = this.getStar(starId);
         return _.head(_.filter(s.planets, p => p.id == planetId));
     }
