@@ -36,8 +36,8 @@ export default function MessageList(props: Props) {
 
     const messageItems = props.messages.map((message, i) => {
         return (
-            <div>
-                <ListItem key={i} className={classes.secondaryAction} alignItems="flex-start" dense button>
+            <div key={i}>
+                <ListItem className={classes.secondaryAction} alignItems="flex-start" dense button>
                     <ListItemIcon><EmailIcon /></ListItemIcon>
                     <ListItemText id="switch-list-label-wifi" primary={message} />
                     <ListItemSecondaryAction>
