@@ -2,8 +2,12 @@ import Rand from 'rand-seed';
 import { Vector, distanceSq } from '../2d';
 import { v4 as uuidv4 } from 'uuid';
 import * as names from './names.json';
+import Game from './game';
+
 const planetMonikers = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
+export type MineralType = "ironium" | "boranium" | "germanium";
+export type Minerals = { [mt in MineralType]: number };
 
 export interface Planet {
     id: string;
@@ -12,6 +16,17 @@ export interface Planet {
     r: number;
     phi: number;
     year: number;
+    meta: PlanetMeta;
+}
+
+export interface PlanetMeta {
+    gravity: number;
+    temperature: number;
+    radiation: number;
+    surface: Minerals;
+    concentration: Minerals;
+    factories: number;
+    mines: number;
 }
 
 export interface Star {
@@ -37,7 +52,7 @@ export class StarDB {
         this._rand = new Rand(seed);
     }
 
-    public getStar(id: number): Star|undefined {
+    public getStar(id: string): Star | undefined {
         return this._stars[id];
     }
 
@@ -99,7 +114,24 @@ export class StarDB {
                 name: `${s.name} ${planetMonikers[i]}`,
                 r: currentR + Math.floor(this._rand.next() * 20) + 5,
                 phi: this._rand.next() * 2 * Math.PI,
-                year: this._rand.next() * 0.8 + 0.2
+                year: this._rand.next() * 0.8 + 0.2,
+                meta: {
+                    gravity: Game.gravityRange.min + Math.round(100 * this._rand.next() * (Game.gravityRange.max - Game.gravityRange.min)) / 100,
+                    temperature: Game.temperatureRange.min + Math.floor(this._rand.next() * (Game.temperatureRange.max - Game.temperatureRange.min)),
+                    radiation: Game.radiationRange.min + Math.floor(this._rand.next() * (Game.radiationRange.max - Game.radiationRange.min)),
+                    surface: {
+                        ironium: 0,
+                        boranium: 0,
+                        germanium: 0
+                    },
+                    concentration: {
+                        ironium: this._rand.next(),
+                        boranium: this._rand.next(),
+                        germanium: this._rand.next()
+                    },
+                    mines: 0,
+                    factories: 0
+                }
             };
             currentR = p.r;
             s.planets.push(p);

@@ -1,15 +1,29 @@
-import { Transform, Point } from "./2d";
+import { Transform, Point, Vector, distance, distanceSq } from "./2d";
 import { Star, Planet } from "./client/stars";
 import { Ship } from "./client/player";
 
 interface SectorSource {
-    getSectors(sxMin: number, syMin: number, sxMax: number, syMax: number): Star[][][];
+    getSectors(sxMin: number, syMin: number, sxMax?: number, syMax?: number): Star[][][];
 }
 
 interface PlayerData {
     homeworld: Readonly<Planet>;
     ships: Readonly<Ship[]>;
 }
+
+export interface SelectedPlanet {
+    type: 'Planet';
+    item: Planet;
+}
+export interface SelectedStar {
+    type: 'Star';
+    item: Star;
+}
+export interface SelectedShip {
+    type: 'Ship';
+    item: Ship;
+}
+export type SelectedItem = SelectedPlanet | SelectedStar | SelectedShip;
 
 const ShipPath = new Path2D('M-30.55555,40.55594    c0,-46.80785 12.93585,-116.94444 30.27778,-116.94444    c17.34193,0 30.83333,69.02548 30.83333,115.83333    c0,46.80786 -12.93585,36.94445 -30.27777,36.94445    c-17.34193,0 -30.83334,10.97452 -30.83334,-35.83334    z M-55.277758,63.055949c0,-25.16882 25.60773,-45.55556 57.22222,-45.55556c31.61449,0 57.22222,20.38674 57.22222,45.55556c0,25.16881 -23.38551,-9.44445 -55,-9.44445c-31.61448,0 -59.44444,34.61326 -59.44444,9.44445z');
 
@@ -19,15 +33,17 @@ export class Renderer {
     private readonly _sectorSource: SectorSource;
     private readonly _playerData: PlayerData;
     private readonly _mapToScreen: Transform;
+    private readonly _onSelected: (i: SelectedItem) => void;
     private _lastMouseCoord: Point | null;
     private _lastFrame: number;
 
-    constructor(canvas: HTMLCanvasElement, sectorSize: number, sectorSource: SectorSource, playerData: PlayerData) {
+    constructor(canvas: HTMLCanvasElement, sectorSize: number, sectorSource: SectorSource, playerData: PlayerData, onSelected: (i: SelectedItem) => void) {
         this._canvas = canvas;
         this._sectorSize = sectorSize;
         this._sectorSource = sectorSource;
         this._playerData = playerData;
         this._mapToScreen = new Transform(0, 0, 1);
+        this._onSelected = onSelected;
 
         // size the canvas to fill the entire window
         this._canvas.width = window.innerWidth;
@@ -110,7 +126,20 @@ export class Renderer {
                     ctx.arc(tp.x, tp.y, Math.max(3, 5 * this._mapToScreen.scale), 0, 2 * Math.PI);
                     ctx.fill();
 
+                    // ctx.strokeStyle = "red";
+                    // ctx.beginPath();
+                    // ctx.arc(tp.x, tp.y, Math.max(5, 7 * this._mapToScreen.scale), 0, 2 * Math.PI);
+                    // ctx.stroke();
+
                     if (alpha > 0) {
+                        const fontSize = Math.max(12, 4 * this._mapToScreen.scale);
+                        ctx.font = `${fontSize}px Courier New`;
+                        ctx.fillStyle = `rgba(160, 160, 255, ${alpha})`;
+                        ctx.textAlign = 'center';
+                        ctx.fillText(star.name, tp.x, tp.y + 10 * this._mapToScreen.scale);
+                        //ctx.font = `${fontSize * 0.75}px Courier New`;
+                        //ctx.fillText(`(${star.id})`, tp.x, tp.y + fontSize + 10 * this._mapToScreen.scale);
+            
                         for (const planet of star.planets) {
                             ctx.strokeStyle = `rgba(37, 37, 37, ${alpha})`;
                             if (this._playerData.homeworld.star.id === star.id && this._playerData.homeworld.id == planet.id) {
@@ -173,6 +202,7 @@ export class Renderer {
         if (this.renderDebugText) {
             ctx.font = "16px Courier New";
             ctx.fillStyle = "red";
+            ctx.textAlign = 'left';
             ctx.fillText(`  offset: ${this._mapToScreen.offset}`, 10, 16);
             ctx.fillText(`   scale: ${this._mapToScreen.scale.toFixed(3)}`, 10, 32);
             ctx.fillText(`viewport: ${tlMap}, ${brMap}`, 10, 48);
@@ -191,6 +221,36 @@ export class Renderer {
 
     private mouseUp(e: MouseEvent): void {
         this._lastMouseCoord = null;
+        
+        if (e.button !== 0) {
+            // only handle left clicks
+            return;
+        }
+
+        const clickMapPoint = this._mapToScreen.untransform(new Point(e.clientX, e.clientY));
+        const sx = Math.floor(clickMapPoint.x / this._sectorSize);
+        const sy = Math.floor(clickMapPoint.y / this._sectorSize);
+        const sectors = this._sectorSource.getSectors(sx, sy);
+        console.log(clickMapPoint);
+
+        const clickD = Math.max(7, 7 / this._mapToScreen.scale);
+        console.log(`Checking if anything is within ${clickD} of click`);
+        for (const star of sectors[sx][sy]) {
+            const d = distance(clickMapPoint, star);
+            console.log(`${star.name} (${star.id}) ${d} from click`);
+            if (d < clickD) {
+                this._onSelected({type: 'Star', item: star});
+                return;
+            }
+            for (const planet of star.planets) {
+                const d = distance(clickMapPoint, planet);
+                console.log(`${star.name}[${planet.id}] ${d} from click`);
+                if (d < clickD) {
+                    this._onSelected({type: 'Planet', item: planet});
+                    return;
+                }
+            }
+        }
     }
 
     private mouseMove(e: MouseEvent): void {

@@ -1,18 +1,16 @@
 import * as React from 'react';
-import * as ReactDOM from 'react-dom';
 import { createStyles, Theme, WithStyles, withStyles, createMuiTheme } from '@material-ui/core/styles';
-import Paper from '@material-ui/core/Paper';
 import Grid from '@material-ui/core/Grid';
 import { StarDB } from './server/stars';
 import { PlayerInfo } from './server/player';
 import { Renderer } from './renderer';
 import './style.css';
 import { Point } from './2d';
-import { StarsClient } from './client/stars';
+import { StarsClient, Planet, PlanetMeta } from './client/stars';
 import { PlayerClient } from './client/player';
-import { Card, MuiThemeProvider } from '@material-ui/core';
 import MessageList from './message_list';
-import CssBaseline from '@material-ui/core/CssBaseline';
+import PlanetSummary from './planet_summary';
+import Game from './server/game';
 
 const MAP_SIZE = 1000,
       SECTOR_SIZE = 1000,
@@ -30,14 +28,13 @@ const rootData = {
         "To",
         "Test",
         "With"
-    ]
+    ],
+    planet: null as Planet,
+    planetMeta: undefined as PlanetMeta,
+    gravityRange: [0.22, 4.4] as [number, number],
+    tempRange: [-140, 140] as [number, number],
+    radiationRange: [15, 85] as [number, number],
 }
-
-const darkTheme = createMuiTheme({
-    palette: {
-      type: 'dark',
-    },
-  });
 
 const styles = (theme: Theme) =>
     createStyles({
@@ -76,10 +73,19 @@ const App = withStyles(styles)(
             super(props);
             const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 
-            this._renderer = new Renderer(canvas, SECTOR_SIZE, this._starClient, this._playerClient);
+            this._renderer = new Renderer(canvas, SECTOR_SIZE, this._starClient, this._playerClient, item => {
+                console.log(item);
+                if (item.type == 'Planet') {
+                    rootData.planet = item.item;
+                    rootData.planetMeta = this._starClient.getPlanetMeta(item.item.star.id, item.item.id);
+                }
+                this.forceUpdate();
+            });
 
             this._renderer.transform.scale = 5;
             const homeworld = this._playerClient.homeworld;
+            rootData.planet = homeworld;
+            rootData.planetMeta = this._starClient.getPlanetMeta(homeworld.star.id, homeworld.id);
             console.log(homeworld);
             const { x, y } = this._renderer.transform.transform(new Point(homeworld.star.x, homeworld.star.y));
             this._renderer.transform.translateTo(-x + canvas.width / 2, -y + canvas.height / 3);
@@ -91,14 +97,16 @@ const App = withStyles(styles)(
             return (
                 <div className={classes.footer}>
                     <Grid container spacing={3} style={{height: 'calc(100% + 24px)'}}>
-                        <Grid item xs={4} style={{height: '100%'}}>
+                        <Grid item xs style={{height: '100%'}}>
                             <MessageList messages={rootData.messages} />
                         </Grid>
-                        <Grid item xs={4}>
-                            <Card className={classes.paper}>xs=3</Card>
-                        </Grid>
-                        <Grid item xs={4}>
-                            <Card className={classes.paper}>xs=3</Card>
+                        <Grid item xs style={{height: '100%'}}>
+                            <PlanetSummary
+                                planet={rootData.planet}
+                                planetMeta={rootData.planetMeta}
+                                gravityRange={Game.gravityRange}
+                                tempRange={Game.temperatureRange}
+                                radiationRange={Game.radiationRange} />
                         </Grid>
                     </Grid>
                 </div>
@@ -106,9 +114,4 @@ const App = withStyles(styles)(
         }
     });
 
-let domContainer = document.querySelector('#app-root');
-ReactDOM.render(
-    <MuiThemeProvider theme={darkTheme}>
-        <CssBaseline />
-        <App />
-    </MuiThemeProvider>, domContainer);
+export default App;

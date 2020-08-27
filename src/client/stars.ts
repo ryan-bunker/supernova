@@ -1,6 +1,9 @@
 import * as server from "../server/stars";
 import * as _ from "lodash";
 
+export type MineralType = "ironium" | "boranium" | "germanium";
+export type Minerals = { [mt in MineralType]: number };
+
 export class Planet {
     id: string;
     star: Star;
@@ -22,6 +25,16 @@ export class Planet {
     }
 }
 
+export interface PlanetMeta {
+    gravity: number;
+    temperature: number;
+    radiation: number;
+    surface: Minerals;
+    concentration: Minerals;
+    factories: number;
+    mines: number;
+}
+
 export class Star {
     id: string;
     name: string;
@@ -41,8 +54,7 @@ export class StarsClient {
 
     getStar(id: string): Star|undefined {
         const s = this._db.getStar(id);
-        if (s === undefined)
-            return undefined;
+        if (s === undefined) return undefined;
         return this.mapStar(s);
     }
 
@@ -51,7 +63,18 @@ export class StarsClient {
         return _.head(_.filter(s.planets, p => p.id == planetId));
     }
 
-    getSectors(sxMin: number, syMin: number, sxMax: number, syMax: number): Star[][][] {
+    getPlanetMeta(starId: string, planetId: string): PlanetMeta|undefined {
+        const s = this._db.getStar(starId);
+        if (s === undefined) return undefined;
+        const p = _.head(_.filter(s.planets, p => p.id == planetId));
+        if (p === undefined) return undefined;
+        return p.meta;
+    }
+
+    getSectors(sxMin: number, syMin: number, sxMax?: number, syMax?: number): Star[][][] {
+        if (sxMax === undefined) sxMax = sxMin;
+        if (syMax === undefined) syMax = syMin;
+
         const stars = this._db.getSectors(sxMin, syMin, sxMax, syMax);
         const result: Star[][][] = [];
         for (let sx=sxMin; sx<=sxMax; sx++) {
