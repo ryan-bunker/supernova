@@ -1,10 +1,14 @@
 import Rand from 'rand-seed';
 import { Vector, distanceSq } from '../2d';
 import { v4 as uuidv4 } from 'uuid';
+import * as names from './names.json';
+const planetMonikers = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+
 
 export interface Planet {
     id: string;
     starId: string;
+    name: string;
     r: number;
     phi: number;
     year: number;
@@ -12,6 +16,7 @@ export interface Planet {
 
 export interface Star {
     id: string;
+    name: string;
     x: number;
     y: number;
     sx: number;
@@ -73,8 +78,11 @@ export class StarDB {
     }
 
     private generateStar(x: number, y: number): Star {
+        const adj = names.adjectives[Math.floor(this._rand.next() * names.adjectives.length)];
+        const noun = names.nouns[Math.floor(this._rand.next() * names.nouns.length)];
         const s: Star = {
             id: uuidv4(),
+            name: `${adj.charAt(0).toUpperCase() + adj.slice(1)} ${noun.charAt(0).toUpperCase() + noun.slice(1)}`,
             x, y,
             sx: Math.floor(x / this._sectorSize),
             sy: Math.floor(y / this._sectorSize),
@@ -88,6 +96,7 @@ export class StarDB {
             const p: Planet = {
                 id: uuidv4(),
                 starId: s.id,
+                name: `${s.name} ${planetMonikers[i]}`,
                 r: currentR + Math.floor(this._rand.next() * 20) + 5,
                 phi: this._rand.next() * 2 * Math.PI,
                 year: this._rand.next() * 0.8 + 0.2

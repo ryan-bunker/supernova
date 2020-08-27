@@ -4,6 +4,7 @@ import * as _ from "lodash";
 export class Planet {
     id: string;
     star: Star;
+    name: string;
     r: number;
     phi: number;
     year: number;
@@ -23,6 +24,7 @@ export class Planet {
 
 export class Star {
     id: string;
+    name: string;
     x: number;
     y: number;
     sx: number;
@@ -64,6 +66,7 @@ export class StarsClient {
     private mapStar(dbStar: server.Star): Star {
         const s = new Star();
         s.id = dbStar.id;
+        s.name = dbStar.name;
         s.x = dbStar.x;
         s.y = dbStar.y;
         s.sx = dbStar.sx;
@@ -76,6 +79,7 @@ export class StarsClient {
         const p = new Planet();
         p.id = dbPlanet.id;
         p.star = star;
+        p.name = dbPlanet.name;
         p.r = dbPlanet.r;
         p.phi = dbPlanet.phi;
         p.year = dbPlanet.year;
