@@ -33,17 +33,19 @@ export class Renderer {
     private readonly _sectorSource: SectorSource;
     private readonly _playerData: PlayerData;
     private readonly _mapToScreen: Transform;
-    private readonly _onSelected: (i: SelectedItem) => void;
+    private readonly _onSelected: (i: SelectedItem|undefined) => void;
     private _lastMouseCoord: Point | null;
     private _lastFrame: number;
+    private _selectedItem: SelectedItem | undefined;
 
-    constructor(canvas: HTMLCanvasElement, sectorSize: number, sectorSource: SectorSource, playerData: PlayerData, onSelected: (i: SelectedItem) => void) {
+    constructor(canvas: HTMLCanvasElement, sectorSize: number, sectorSource: SectorSource, playerData: PlayerData, onSelected: (i: SelectedItem|undefined) => void) {
         this._canvas = canvas;
         this._sectorSize = sectorSize;
         this._sectorSource = sectorSource;
         this._playerData = playerData;
         this._mapToScreen = new Transform(0, 0, 1);
         this._onSelected = onSelected;
+        this._selectedItem = undefined;
 
         // size the canvas to fill the entire window
         this._canvas.width = window.innerWidth;
@@ -61,6 +63,14 @@ export class Renderer {
         this._canvas.addEventListener('mousemove', e => this.mouseMove(e));
         this._canvas.addEventListener('wheel', e => this.mouseWheel(e));
         window.addEventListener('keyup', e => this.keyUp(e));
+    }
+
+    get selectedItem(): SelectedItem | undefined {
+        return this._selectedItem;
+    }
+    set selectedItem(item: SelectedItem | undefined) {
+        this._selectedItem = item;
+        this._onSelected(item);
     }
 
     get transform(): Transform {
@@ -126,10 +136,15 @@ export class Renderer {
                     ctx.arc(tp.x, tp.y, Math.max(3, 5 * this._mapToScreen.scale), 0, 2 * Math.PI);
                     ctx.fill();
 
-                    // ctx.strokeStyle = "red";
-                    // ctx.beginPath();
-                    // ctx.arc(tp.x, tp.y, Math.max(5, 7 * this._mapToScreen.scale), 0, 2 * Math.PI);
-                    // ctx.stroke();
+                    if (this._selectedItem && this._selectedItem.type == "Star" && this._selectedItem.item.id == star.id) {
+                        ctx.save();
+                        ctx.strokeStyle = "red";
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.arc(tp.x, tp.y, Math.max(5, 8 * this._mapToScreen.scale), 0, 2 * Math.PI);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
 
                     if (alpha > 0) {
                         const fontSize = Math.max(12, 4 * this._mapToScreen.scale);
@@ -157,6 +172,16 @@ export class Renderer {
                             const tPlanetPt = this._mapToScreen.transform(planet);
                             ctx.arc(tPlanetPt.x, tPlanetPt.y, this._mapToScreen.scale, 0, 2 * Math.PI);
                             ctx.fill();
+
+                            if (this._selectedItem && this._selectedItem.type == "Planet" && this._selectedItem.item.id == planet.id) {
+                                ctx.save();
+                                ctx.strokeStyle = "red";
+                                ctx.lineWidth = 3;
+                                ctx.beginPath();
+                                ctx.arc(tPlanetPt.x, tPlanetPt.y, 3 * this._mapToScreen.scale, 0, 2 * Math.PI);
+                                ctx.stroke();
+                                ctx.restore();
+                            }        
                         }
                     }
                 }
@@ -227,6 +252,7 @@ export class Renderer {
             return;
         }
 
+        
         const clickMapPoint = this._mapToScreen.untransform(new Point(e.clientX, e.clientY));
         const sx = Math.floor(clickMapPoint.x / this._sectorSize);
         const sy = Math.floor(clickMapPoint.y / this._sectorSize);
@@ -239,18 +265,19 @@ export class Renderer {
             const d = distance(clickMapPoint, star);
             console.log(`${star.name} (${star.id}) ${d} from click`);
             if (d < clickD) {
-                this._onSelected({type: 'Star', item: star});
+                this.selectedItem = {type: 'Star', item: star};
                 return;
             }
             for (const planet of star.planets) {
                 const d = distance(clickMapPoint, planet);
                 console.log(`${star.name}[${planet.id}] ${d} from click`);
                 if (d < clickD) {
-                    this._onSelected({type: 'Planet', item: planet});
+                    this.selectedItem = {type: 'Planet', item: planet};
                     return;
                 }
             }
         }
+        this.selectedItem = undefined;
     }
 
     private mouseMove(e: MouseEvent): void {

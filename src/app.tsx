@@ -75,18 +75,22 @@ const App = withStyles(styles)(
 
             this._renderer = new Renderer(canvas, SECTOR_SIZE, this._starClient, this._playerClient, item => {
                 console.log(item);
-                if (item.type == 'Planet') {
+                if (item === undefined) {
+                    rootData.planet = undefined;
+                    rootData.planetMeta = undefined;
+                } else if (item.type == 'Planet') {
                     rootData.planet = item.item;
                     rootData.planetMeta = this._starClient.getPlanetMeta(item.item.star.id, item.item.id);
+                } else {
+                    rootData.planet = undefined;
+                    rootData.planetMeta = undefined;
                 }
                 this.forceUpdate();
             });
 
             this._renderer.transform.scale = 5;
             const homeworld = this._playerClient.homeworld;
-            rootData.planet = homeworld;
-            rootData.planetMeta = this._starClient.getPlanetMeta(homeworld.star.id, homeworld.id);
-            console.log(homeworld);
+            this._renderer.selectedItem = {type: "Planet", item: homeworld};
             const { x, y } = this._renderer.transform.transform(new Point(homeworld.star.x, homeworld.star.y));
             this._renderer.transform.translateTo(-x + canvas.width / 2, -y + canvas.height / 3);
         }
