@@ -74,7 +74,7 @@ export class Renderer {
         const fps = 1000 / (Date.now() - this._lastFrame);
         this._lastFrame = Date.now();
 
-        const ctx = this._canvas.getContext('2d');
+        const ctx = this._canvas.getContext('2d')!;
 
         // project screen viewport into map coordinates
         const tlScreen = { x: 0, y: 0 };

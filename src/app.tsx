@@ -29,8 +29,8 @@ const rootData = {
         "Test",
         "With"
     ],
-    planet: null as Planet,
-    planetMeta: undefined as PlanetMeta,
+    planet: undefined as (Planet|undefined),
+    planetMeta: undefined as (PlanetMeta|undefined),
     gravityRange: [0.22, 4.4] as [number, number],
     tempRange: [-140, 140] as [number, number],
     radiationRange: [15, 85] as [number, number],
@@ -94,6 +94,18 @@ const App = withStyles(styles)(
         render() {
             const { classes } = this.props;
             window.requestAnimationFrame(() => this._renderer.render());
+            
+            let selectedSummary: JSX.Element|null = null;
+            if (rootData.planet) {
+                selectedSummary =
+                    <PlanetSummary
+                        planet={rootData.planet}
+                        planetMeta={rootData.planetMeta}
+                        gravityRange={Game.gravityRange}
+                        tempRange={Game.temperatureRange}
+                        radiationRange={Game.radiationRange} />
+            }
+
             return (
                 <div className={classes.footer}>
                     <Grid container spacing={3} style={{height: 'calc(100% + 24px)'}}>
@@ -101,12 +113,7 @@ const App = withStyles(styles)(
                             <MessageList messages={rootData.messages} />
                         </Grid>
                         <Grid item xs style={{height: '100%'}}>
-                            <PlanetSummary
-                                planet={rootData.planet}
-                                planetMeta={rootData.planetMeta}
-                                gravityRange={Game.gravityRange}
-                                tempRange={Game.temperatureRange}
-                                radiationRange={Game.radiationRange} />
+                            {selectedSummary}
                         </Grid>
                     </Grid>
                 </div>

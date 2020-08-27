@@ -1,14 +1,22 @@
 {
-    "include": ["src/**/*.ts"],
-    "exclude": ["node_modules", "**/*.spec.ts"],
+    "include": [
+        "src/**/*.ts",
+        "src/**/*.tsx"
+    ],
+    "exclude": [
+        "node_modules",
+        "**/*.spec.ts"
+    ],
     "compilerOptions": {
         "outDir": "./dist/",
         "sourceMap": true,
         "noImplicitAny": true,
+        "noImplicitThis": true,
+        "strictNullChecks": true,
         "module": "es6",
         "target": "es5",
         "jsx": "react",
-        "allowJs": true,
+        "allowJs": false,
         "moduleResolution": "node",
         "resolveJsonModule": true
     }

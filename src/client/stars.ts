@@ -60,6 +60,7 @@ export class StarsClient {
 
     getPlanet(starId: string, planetId: string): Planet|undefined {
         const s = this.getStar(starId);
+        if (s === undefined) return undefined;
         return _.head(_.filter(s.planets, p => p.id == planetId));
     }
 

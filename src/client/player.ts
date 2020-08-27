@@ -17,12 +17,16 @@ export class PlayerClient {
     }
 
     get homeworld(): Planet {
-        return this._starClient.getPlanet(this._playerDb.homeworld.starId, this._playerDb.homeworld.id);
+        const hw = this._starClient.getPlanet(this._playerDb.homeworld.starId, this._playerDb.homeworld.id);
+        if (hw === undefined) {
+            throw `Player homeworld is undefined (starId: ${this._playerDb.homeworld.starId}, planetId: ${this._playerDb.homeworld.id})`;
+        }
+        return hw;
     }
 
     get ships(): Readonly<Ship[]> {
         return _.map(this._playerDb.ships, dbShip => {
-            let loc: Star | Planet | Point;
+            let loc: Star | Planet | Point | undefined;
             if ("starId" in dbShip.loc) {
                 // planet
                 loc = this._starClient.getPlanet(dbShip.loc.starId, dbShip.loc.id);
@@ -32,6 +36,9 @@ export class PlayerClient {
             } else {
                 // point
                 loc = new Point(dbShip.loc.x, dbShip.loc.y);
+            }
+            if (loc === undefined) {
+                throw 'location undefined';
             }
             return { loc };
         });
