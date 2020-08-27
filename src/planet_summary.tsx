@@ -34,8 +34,8 @@ export default function PlanetSummary(props: Props) {
             <>
             <Grid container spacing={3}>
                 <Grid item xs={4}>
-                    <Typography align="center">Gravity - {props.planetMeta.gravity}g</Typography>
-                    <Tooltip placement="top" title={`Gravity is ${props.planetMeta.gravity}g - Habitable Range is ${props.gravityRange.min}g to ${props.gravityRange.max}g`}>
+                    <Typography align="center">Gravity - {props.planetMeta.gravity.toFixed(2)}g</Typography>
+                    <Tooltip placement="top" title={`Gravity is ${props.planetMeta.gravity.toFixed(2)}g - Habitable Range is ${props.gravityRange.min}g to ${props.gravityRange.max}g`}>
                         <Box style={{height: 100}}>
                             <CircularGauge min={0.12} max={8} low={0.22} high={4.4} value={props.planetMeta.gravity} unit="g" color={"#0000cc"} />
                         </Box>

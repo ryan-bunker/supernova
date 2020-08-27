@@ -11,10 +11,15 @@ import { PlayerClient } from './client/player';
 import MessageList from './message_list';
 import PlanetSummary from './planet_summary';
 import Game from './server/game';
+import { Card, Accordion, AccordionSummary, Typography, AccordionDetails, Tooltip } from '@material-ui/core';
+import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
+import { Pagination, PaginationItem } from '@material-ui/lab';
+import Sidebar from './sidebar';
+import * as _ from 'lodash';
 
 const MAP_SIZE = 1000,
-      SECTOR_SIZE = 1000,
-      STAR_DENSITY = 10;
+    SECTOR_SIZE = 1000,
+    STAR_DENSITY = 10;
 
 const rootData = {
     messages: [
@@ -29,8 +34,8 @@ const rootData = {
         "Test",
         "With"
     ],
-    planet: undefined as (Planet|undefined),
-    planetMeta: undefined as (PlanetMeta|undefined),
+    planet: undefined as (Planet | undefined),
+    planetMeta: undefined as (PlanetMeta | undefined),
     gravityRange: [0.22, 4.4] as [number, number],
     tempRange: [-140, 140] as [number, number],
     radiationRange: [15, 85] as [number, number],
@@ -50,10 +55,23 @@ const styles = (theme: Theme) =>
             position: 'fixed',
             bottom: 0,
             left: 0,
-            right: 0,
+            //right: 0,
             padding: theme.spacing(2),
+            width: '75%',
             height: '33%',
-        }
+        },
+        sidebar: {
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            padding: theme.spacing(2),
+            width: '25%',
+        },
+        heading: {
+            fontSize: theme.typography.pxToRem(15),
+            fontWeight: theme.typography.fontWeightRegular,
+        },
     });
 
 interface Props extends WithStyles<typeof styles> {
@@ -90,7 +108,7 @@ const App = withStyles(styles)(
 
             this._renderer.transform.scale = 5;
             const homeworld = this._playerClient.homeworld;
-            this._renderer.selectedItem = {type: "Planet", item: homeworld};
+            this._renderer.selectedItem = { type: "Planet", item: homeworld };
             const { x, y } = this._renderer.transform.transform(new Point(homeworld.star.x, homeworld.star.y));
             this._renderer.transform.translateTo(-x + canvas.width / 2, -y + canvas.height / 3);
         }
@@ -98,8 +116,8 @@ const App = withStyles(styles)(
         render() {
             const { classes } = this.props;
             window.requestAnimationFrame(() => this._renderer.render());
-            
-            let selectedSummary: JSX.Element|null = null;
+
+            let selectedSummary: JSX.Element | null = null;
             if (rootData.planet) {
                 selectedSummary =
                     <PlanetSummary
@@ -111,16 +129,21 @@ const App = withStyles(styles)(
             }
 
             return (
-                <div className={classes.footer}>
-                    <Grid container spacing={3} style={{height: 'calc(100% + 24px)'}}>
-                        <Grid item xs style={{height: '100%'}}>
-                            <MessageList messages={rootData.messages} />
+                <>
+                    <div className={classes.footer}>
+                        <Grid container spacing={3} style={{ height: 'calc(100% + 24px)' }}>
+                            <Grid item xs style={{ height: '100%' }}>
+                                <MessageList messages={rootData.messages} />
+                            </Grid>
+                            <Grid item xs style={{ height: '100%' }}>
+                                {selectedSummary}
+                            </Grid>
                         </Grid>
-                        <Grid item xs style={{height: '100%'}}>
-                            {selectedSummary}
-                        </Grid>
-                    </Grid>
-                </div>
+                    </div>
+                    <div className={classes.sidebar}>
+                        <Sidebar planets={_.map(this._playerClient.planets, p => { return {p, m: p.meta}; })} />
+                    </div>
+                </>
             );
         }
     });

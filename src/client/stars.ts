@@ -31,8 +31,9 @@ export interface PlanetMeta {
     radiation: number;
     surface: Minerals;
     concentration: Minerals;
-    factories: number;
-    mines: number;
+    factories: {count: number, max: number};
+    mines: {count: number, max: number};
+    population: number;
 }
 
 export class Star {

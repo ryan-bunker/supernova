@@ -25,8 +25,9 @@ export interface PlanetMeta {
     radiation: number;
     surface: Minerals;
     concentration: Minerals;
-    factories: number;
-    mines: number;
+    factories: {count: number, max: number};
+    mines: {count: number, max: number};
+    population: number;
 }
 
 export interface Star {
@@ -129,8 +130,9 @@ export class StarDB {
                         boranium: this._rand.next(),
                         germanium: this._rand.next()
                     },
-                    mines: 0,
-                    factories: 0
+                    mines: {count: 0, max: 0},
+                    factories: {count: 0, max: 0},
+                    population: 0
                 }
             };
             currentR = p.r;

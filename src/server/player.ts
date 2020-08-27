@@ -13,6 +13,10 @@ export class PlayerInfo {
         return this._planets[0];
     }
 
+    get planets(): Readonly<Planet[]> {
+        return this._planets;
+    }
+
     get ships(): Readonly<Ship[]> {
         return this._ships;
     }
@@ -22,16 +26,23 @@ export class PlayerInfo {
         const player = new PlayerInfo();
         for (let sx=0; ; sx++) {
             const [[sector]] = db.getSectors(sx, 0);
+            let homestar: Star | null = null;
             let homeworld: Planet | null = null;
             for (const star of sector) {
                 if (star.planets.length != 4)
                     continue;
+                homestar = star;
                 homeworld = star.planets[1];
                 break;
             }
-            if (!homeworld) continue;
+            if (!homestar || !homeworld) continue;
 
+            homeworld.meta.population = 33000;
             player._planets.push(homeworld);
+            for (const p of homestar.planets) {
+                if (p.id === homeworld.id) continue;
+                player._planets.push(p);
+            }
             break;
         }
         player._ships.push({
