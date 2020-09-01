@@ -5,7 +5,7 @@ import { Renderer } from './renderer';
 import './style.css';
 import { Point } from './2d';
 import { StarsClient, Planet, PlanetMeta } from './client/stars';
-import { PlayerClient } from './client/player';
+import { PlayerClient, PlanetWithMeta } from './client/player';
 import MessageList from './message_list';
 import PlanetSummary from './planet_summary';
 import Game from './server/game';
@@ -15,26 +15,6 @@ import * as _ from 'lodash';
 const MAP_SIZE = 1000,
     SECTOR_SIZE = 1000,
     STAR_DENSITY = 10;
-
-const rootData = {
-    messages: [
-        "Tip: You can hide unimportant messages by clicking the checkmark in the messages titlebar. You can reshow these messages at any time by clicking on the magnifying glass in the titlebar.",
-        "Tip: To add waypoints, select a ship, then click on the desired destination while holding down the Shift key. You can also drag existing waypoints to move them to a new location.",
-        "Tip: To design your own ships, press 'F4', select 'Available Hull Types', pick one from the dropdown, and hit the 'Copy' button.",
-        "Tip: Popup help is available over many of the displayed statistics. For example you can click on planet statistics in the summary window to get additional details.",
-        "Your home planet is Crabby. Your people are ready to leave the nest and explore the universe. Good luck.",
-        "More",
-        "Messages",
-        "To",
-        "Test",
-        "With"
-    ],
-    planet: undefined as (Planet | undefined),
-    planetMeta: undefined as (PlanetMeta | undefined),
-    gravityRange: [0.22, 4.4] as [number, number],
-    tempRange: [-140, 140] as [number, number],
-    radiationRange: [15, 85] as [number, number],
-}
 
 const styles = (theme: Theme) =>
     createStyles({
@@ -73,8 +53,15 @@ interface Props extends WithStyles<typeof styles> {
     serverWorker: Worker;
 }
 
+interface State {
+    messages: string[];
+    planet?: Planet;
+    planetMeta?: PlanetMeta;
+    planets: Readonly<PlanetWithMeta[]>;
+}
+
 const App = withStyles(styles)(
-    class extends React.Component<Props> {
+    class extends React.Component<Props, State> {
         private readonly _renderer: Renderer;
         // client instances
         private readonly _starClient: StarsClient;
@@ -84,6 +71,22 @@ const App = withStyles(styles)(
             super(props);
             const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 
+            this.state = {
+                messages: [
+                    "Tip: You can hide unimportant messages by clicking the checkmark in the messages titlebar. You can reshow these messages at any time by clicking on the magnifying glass in the titlebar.",
+                    "Tip: To add waypoints, select a ship, then click on the desired destination while holding down the Shift key. You can also drag existing waypoints to move them to a new location.",
+                    "Tip: To design your own ships, press 'F4', select 'Available Hull Types', pick one from the dropdown, and hit the 'Copy' button.",
+                    "Tip: Popup help is available over many of the displayed statistics. For example you can click on planet statistics in the summary window to get additional details.",
+                    "Your home planet is Crabby. Your people are ready to leave the nest and explore the universe. Good luck.",
+                    "More",
+                    "Messages",
+                    "To",
+                    "Test",
+                    "With"
+                ],
+                planets: []
+            };
+
             this._starClient = new StarsClient(props.serverWorker);
             this._playerClient = new PlayerClient(this._starClient, props.serverWorker);
 
@@ -91,16 +94,13 @@ const App = withStyles(styles)(
                 console.log(item);
 
                 if (item === undefined) {
-                    rootData.planet = undefined;
-                    rootData.planetMeta = undefined;
+                    this.setState({ planet: undefined, planetMeta: undefined });
                 } else if (item.type == 'Planet') {
-                    rootData.planet = item.item;
-                    this._starClient.getPlanetMeta(item.item.star.id, item.item.id).then(meta => rootData.planetMeta = meta);
+                    this._starClient.getPlanetMeta(item.item.star.id, item.item.id).then(
+                        meta => this.setState({ planet: item.item, planetMeta: meta }));
                 } else {
-                    rootData.planet = undefined;
-                    rootData.planetMeta = undefined;
+                    this.setState({ planet: undefined, planetMeta: undefined });
                 }
-                this.forceUpdate();
             });
 
             this._renderer.transform.scale = 5;
@@ -112,17 +112,19 @@ const App = withStyles(styles)(
 
                     this._renderer.render();
                 });
+
+            this._playerClient.getPlanets().then(planets => this.setState({ planets }))
         }
 
         render() {
             const { classes } = this.props;
 
             let selectedSummary: JSX.Element | null = null;
-            if (rootData.planet) {
+            if (this.state.planet) {
                 selectedSummary =
                     <PlanetSummary
-                        planet={rootData.planet}
-                        planetMeta={rootData.planetMeta}
+                        planet={this.state.planet}
+                        planetMeta={this.state.planetMeta}
                         gravityRange={Game.gravityRange}
                         tempRange={Game.temperatureRange}
                         radiationRange={Game.radiationRange} />
@@ -133,7 +135,7 @@ const App = withStyles(styles)(
                     <div className={classes.footer}>
                         <Grid container spacing={3} style={{ height: 'calc(100% + 24px)' }}>
                             <Grid item xs style={{ height: '100%' }}>
-                                <MessageList messages={rootData.messages} />
+                                <MessageList messages={this.state.messages} />
                             </Grid>
                             <Grid item xs style={{ height: '100%' }}>
                                 {selectedSummary}
@@ -141,7 +143,7 @@ const App = withStyles(styles)(
                         </Grid>
                     </div>
                     <div className={classes.sidebar}>
-                        {/* <Sidebar planets={_.map(this._playerClient.planets, p => { return { p, m: p.meta }; })} /> */}
+                        <Sidebar planets={this.state.planets} />
                     </div>
                 </>
             );
