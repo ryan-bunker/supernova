@@ -3,12 +3,12 @@ import { Star, Planet } from "./client/stars";
 import { Ship } from "./client/player";
 
 interface SectorSource {
-    getSectors(sxMin: number, syMin: number, sxMax?: number, syMax?: number): Star[][][];
+    getSectors(sxMin: number, syMin: number, sxMax?: number, syMax?: number): Promise<Star[][][]>;
 }
 
 interface PlayerData {
-    homeworld: Readonly<Planet>;
-    ships: Readonly<Ship[]>;
+    getHomeworld(): Promise<Readonly<Planet>>;
+    getShips(): Promise<Readonly<Ship[]>>;
 }
 
 export interface SelectedPlanet {
@@ -33,12 +33,12 @@ export class Renderer {
     private readonly _sectorSource: SectorSource;
     private readonly _playerData: PlayerData;
     private readonly _mapToScreen: Transform;
-    private readonly _onSelected: (i: SelectedItem|undefined) => void;
+    private readonly _onSelected: (i: SelectedItem | undefined) => void;
     private _lastMouseCoord: Point | null;
     private _lastFrame: number;
     private _selectedItem: SelectedItem | undefined;
 
-    constructor(canvas: HTMLCanvasElement, sectorSize: number, sectorSource: SectorSource, playerData: PlayerData, onSelected: (i: SelectedItem|undefined) => void) {
+    constructor(canvas: HTMLCanvasElement, sectorSize: number, sectorSource: SectorSource, playerData: PlayerData, onSelected: (i: SelectedItem | undefined) => void) {
         this._canvas = canvas;
         this._sectorSize = sectorSize;
         this._sectorSource = sectorSource;
@@ -80,162 +80,174 @@ export class Renderer {
     public renderSectorGrid: boolean = true;
     public renderDebugText: boolean = true;
 
-    public render(): void {
-        const fps = 1000 / (Date.now() - this._lastFrame);
-        this._lastFrame = Date.now();
+    public async render(): Promise<void> {
+        do {
+            const fps = 1000 / (Date.now() - this._lastFrame);
+            this._lastFrame = Date.now();
 
-        const ctx = this._canvas.getContext('2d')!;
+            // project screen viewport into map coordinates
+            const tlScreen = { x: 0, y: 0 };
+            const brScreen = { x: this._canvas.width, y: this._canvas.height };
+            const tlMap = this._mapToScreen.untransform(tlScreen);
+            const brMap = this._mapToScreen.untransform(brScreen);
+            const tlSect = new Point(
+                Math.floor(tlMap.x / this._sectorSize),
+                Math.floor(tlMap.y / this._sectorSize));
+            const brSect = new Point(
+                Math.ceil(brMap.x / this._sectorSize),
+                Math.ceil(brMap.y / this._sectorSize));
 
-        // project screen viewport into map coordinates
-        const tlScreen = { x: 0, y: 0 };
-        const brScreen = { x: this._canvas.width, y: this._canvas.height };
-        const tlMap = this._mapToScreen.untransform(tlScreen);
-        const brMap = this._mapToScreen.untransform(brScreen);
-        const tlSect = new Point(
-            Math.floor(tlMap.x / this._sectorSize),
-            Math.floor(tlMap.y / this._sectorSize));
-        const brSect = new Point(
-            Math.ceil(brMap.x / this._sectorSize),
-            Math.ceil(brMap.y / this._sectorSize));
+            // get all of our render state
+            const [sectors, homeworld, ships] = await Promise.all([
+                this._sectorSource.getSectors(tlSect.x, tlSect.y, brSect.x, brSect.y),
+                this._playerData.getHomeworld(),
+                this._playerData.getShips()
+            ]);
 
-        ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+            // wait for next frame to be ready to render
+            await new Promise(window.requestAnimationFrame);
 
-        const sectors = this._sectorSource.getSectors(tlSect.x, tlSect.y, brSect.x, brSect.y);
-        // alpha based on scale
-        // scale [min, 0.5] -> alpha 0.0
-        // scale [0.5, 2.0] -> alpha (linear)
-        // scale [2.0, max] -> alpha 1.0
-        const alpha = Math.max(0, Math.min((this._mapToScreen.scale - 0.5) / 1.5, 1.0));
+            // at this point we can't use await anymore, so put this inside its
+            // own iife context to make doing so a compiler error
+            (() => {
+                const ctx = this._canvas.getContext('2d')!;
+                ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
 
-        for (let sx = tlSect.x; sx <= brSect.x; sx++) {
-            const sectX = sectors[sx];
-            if (!sectX) continue;
+                // alpha based on scale
+                // scale [min, 0.5] -> alpha 0.0
+                // scale [0.5, 2.0] -> alpha (linear)
+                // scale [2.0, max] -> alpha 1.0
+                const alpha = Math.max(0, Math.min((this._mapToScreen.scale - 0.5) / 1.5, 1.0));
 
-            for (let sy = tlSect.y; sy <= brSect.y; sy++) {
-                const sectY = sectX[sy];
-                if (!sectY) continue;
+                for (let sx = tlSect.x; sx <= brSect.x; sx++) {
+                    const sectX = sectors[sx];
+                    if (!sectX) continue;
 
-                if (this.renderSectorGrid) {
-                    ctx.strokeStyle = "gray";
-                    ctx.fillStyle = "gray";
-                    ctx.setLineDash([10, 10]);
-                    ctx.font = "16px Courier New";
+                    for (let sy = tlSect.y; sy <= brSect.y; sy++) {
+                        const sectY = sectX[sy];
+                        if (!sectY) continue;
 
-                    const tlSect = this._mapToScreen.transform({ x: sx * this._sectorSize, y: sy * this._sectorSize });
-                    const brSect = this._mapToScreen.transform({ x: (sx + 1) * this._sectorSize, y: (sy + 1) * this._sectorSize });
-                    ctx.strokeRect(tlSect.x, tlSect.y, brSect.x - tlSect.x, brSect.y - tlSect.y);
-                    ctx.fillText(`${sx}:${sy}`, tlSect.x + 4, tlSect.y + 20);
+                        if (this.renderSectorGrid) {
+                            ctx.strokeStyle = "gray";
+                            ctx.fillStyle = "gray";
+                            ctx.setLineDash([10, 10]);
+                            ctx.font = "16px Courier New";
 
-                    ctx.setLineDash([]);
-                }
+                            const tlSect = this._mapToScreen.transform({ x: sx * this._sectorSize, y: sy * this._sectorSize });
+                            const brSect = this._mapToScreen.transform({ x: (sx + 1) * this._sectorSize, y: (sy + 1) * this._sectorSize });
+                            ctx.strokeRect(tlSect.x, tlSect.y, brSect.x - tlSect.x, brSect.y - tlSect.y);
+                            ctx.fillText(`${sx}:${sy}`, tlSect.x + 4, tlSect.y + 20);
 
-                for (const star of sectY) {
-                    const tp = this._mapToScreen.transform(star);
-                    ctx.fillStyle = "white"; //this._playerData.homeworld.star.id === star.id ? "blue" : "white";
-                    ctx.beginPath();
-                    ctx.arc(tp.x, tp.y, Math.max(3, 5 * this._mapToScreen.scale), 0, 2 * Math.PI);
-                    ctx.fill();
+                            ctx.setLineDash([]);
+                        }
 
-                    if (this._selectedItem && this._selectedItem.type == "Star" && this._selectedItem.item.id == star.id) {
-                        ctx.save();
-                        ctx.strokeStyle = "red";
-                        ctx.lineWidth = 3;
-                        ctx.beginPath();
-                        ctx.arc(tp.x, tp.y, Math.max(5, 8 * this._mapToScreen.scale), 0, 2 * Math.PI);
-                        ctx.stroke();
-                        ctx.restore();
-                    }
-
-                    if (alpha > 0) {
-                        const fontSize = Math.max(12, 4 * this._mapToScreen.scale);
-                        ctx.font = `${fontSize}px Courier New`;
-                        ctx.fillStyle = `rgba(160, 160, 255, ${alpha})`;
-                        ctx.textAlign = 'center';
-                        ctx.fillText(star.name, tp.x, tp.y + 10 * this._mapToScreen.scale);
-                        //ctx.font = `${fontSize * 0.75}px Courier New`;
-                        //ctx.fillText(`(${star.id})`, tp.x, tp.y + fontSize + 10 * this._mapToScreen.scale);
-            
-                        for (const planet of star.planets) {
-                            ctx.strokeStyle = `rgba(37, 37, 37, ${alpha})`;
-                            if (this._playerData.homeworld.star.id === star.id && this._playerData.homeworld.id == planet.id) {
-                                ctx.fillStyle = `rgba(0, 0, 255, ${alpha})`;
-                            } else {
-                                ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-                            }
-
-                            // draw orbit first
+                        for (const star of sectY) {
+                            const tp = this._mapToScreen.transform(star);
+                            ctx.fillStyle = "white"; //this._playerData.homeworld.star.id === star.id ? "blue" : "white";
                             ctx.beginPath();
-                            ctx.arc(tp.x, tp.y, planet.r * this._mapToScreen.scale, 0, 2 * Math.PI);
-                            ctx.stroke();
-                            // now draw planet
-                            ctx.beginPath();
-                            const tPlanetPt = this._mapToScreen.transform(planet);
-                            ctx.arc(tPlanetPt.x, tPlanetPt.y, this._mapToScreen.scale, 0, 2 * Math.PI);
+                            ctx.arc(tp.x, tp.y, Math.max(3, 5 * this._mapToScreen.scale), 0, 2 * Math.PI);
                             ctx.fill();
 
-                            if (this._selectedItem && this._selectedItem.type == "Planet" && this._selectedItem.item.id == planet.id) {
+                            if (this._selectedItem && this._selectedItem.type == "Star" && this._selectedItem.item.id == star.id) {
                                 ctx.save();
                                 ctx.strokeStyle = "red";
                                 ctx.lineWidth = 3;
                                 ctx.beginPath();
-                                ctx.arc(tPlanetPt.x, tPlanetPt.y, 3 * this._mapToScreen.scale, 0, 2 * Math.PI);
+                                ctx.arc(tp.x, tp.y, Math.max(5, 8 * this._mapToScreen.scale), 0, 2 * Math.PI);
                                 ctx.stroke();
                                 ctx.restore();
-                            }        
+                            }
+
+                            if (alpha > 0) {
+                                const fontSize = Math.max(12, 4 * this._mapToScreen.scale);
+                                ctx.font = `${fontSize}px Courier New`;
+                                ctx.fillStyle = `rgba(160, 160, 255, ${alpha})`;
+                                ctx.textAlign = 'center';
+                                ctx.fillText(star.name, tp.x, tp.y + 10 * this._mapToScreen.scale);
+                                //ctx.font = `${fontSize * 0.75}px Courier New`;
+                                //ctx.fillText(`(${star.id})`, tp.x, tp.y + fontSize + 10 * this._mapToScreen.scale);
+
+                                for (const planet of star.planets) {
+                                    ctx.strokeStyle = `rgba(37, 37, 37, ${alpha})`;
+                                    if (homeworld.star.id === star.id && homeworld.id == planet.id) {
+                                        ctx.fillStyle = `rgba(0, 0, 255, ${alpha})`;
+                                    } else {
+                                        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                                    }
+
+                                    // draw orbit first
+                                    ctx.beginPath();
+                                    ctx.arc(tp.x, tp.y, planet.r * this._mapToScreen.scale, 0, 2 * Math.PI);
+                                    ctx.stroke();
+                                    // now draw planet
+                                    ctx.beginPath();
+                                    const tPlanetPt = this._mapToScreen.transform(planet);
+                                    ctx.arc(tPlanetPt.x, tPlanetPt.y, this._mapToScreen.scale, 0, 2 * Math.PI);
+                                    ctx.fill();
+
+                                    if (this._selectedItem && this._selectedItem.type == "Planet" && this._selectedItem.item.id == planet.id) {
+                                        ctx.save();
+                                        ctx.strokeStyle = "red";
+                                        ctx.lineWidth = 3;
+                                        ctx.beginPath();
+                                        ctx.arc(tPlanetPt.x, tPlanetPt.y, 3 * this._mapToScreen.scale, 0, 2 * Math.PI);
+                                        ctx.stroke();
+                                        ctx.restore();
+                                    }
+                                }
+                            }
                         }
                     }
                 }
-            }
-        }
 
-        if (alpha > 0) {
-            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-            for (const ship of this._playerData.ships) {
-                if (ship.loc instanceof Planet || ship.loc instanceof Star) {
-                    // ship is in orbit, so draw that
-                    const orbitR = ship.loc instanceof Planet ? 5 : 10;
-                    // draw orbit first
-                    const tLoc = this._mapToScreen.transform(ship.loc);
-                    ctx.beginPath();
-                    ctx.arc(tLoc.x, tLoc.y, orbitR * this._mapToScreen.scale, 0, 2 * Math.PI);
-                    ctx.stroke();
-                    // now draw ship
-                    const phi = ((Date.now() % 10000) / 10000) * 2 * Math.PI;
-                    const shipPt = new Point(
-                        ship.loc.x + orbitR * Math.cos(phi),
-                        ship.loc.y + orbitR * Math.sin(phi));
-                    const tPlanetPt = this._mapToScreen.transform(shipPt);
-                    ctx.save();
+                if (alpha > 0) {
                     ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-                    ctx.translate(tPlanetPt.x, tPlanetPt.y);
-                    ctx.scale(0.01 * this._mapToScreen.scale, -0.01 * this._mapToScreen.scale);
-                    ctx.rotate(-phi);
-                    ctx.fill(ShipPath);
-                    ctx.restore();
-                } else {
-                    const tLoc = this._mapToScreen.transform(ship.loc);
-                    ctx.save();
-                    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-                    ctx.translate(tLoc.x, tLoc.y);
-                    ctx.scale(0.01 * this._mapToScreen.scale, -0.01 * this._mapToScreen.scale);
-                    ctx.fill(ShipPath);
-                    ctx.restore();
+                    for (const ship of ships) {
+                        if (ship.loc instanceof Planet || ship.loc instanceof Star) {
+                            // ship is in orbit, so draw that
+                            const orbitR = ship.loc instanceof Planet ? 5 : 10;
+                            // draw orbit first
+                            const tLoc = this._mapToScreen.transform(ship.loc);
+                            ctx.beginPath();
+                            ctx.arc(tLoc.x, tLoc.y, orbitR * this._mapToScreen.scale, 0, 2 * Math.PI);
+                            ctx.stroke();
+                            // now draw ship
+                            const phi = ((Date.now() % 10000) / 10000) * 2 * Math.PI;
+                            const shipPt = new Point(
+                                ship.loc.x + orbitR * Math.cos(phi),
+                                ship.loc.y + orbitR * Math.sin(phi));
+                            const tPlanetPt = this._mapToScreen.transform(shipPt);
+                            ctx.save();
+                            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                            ctx.translate(tPlanetPt.x, tPlanetPt.y);
+                            ctx.scale(0.01 * this._mapToScreen.scale, -0.01 * this._mapToScreen.scale);
+                            ctx.rotate(-phi);
+                            ctx.fill(ShipPath);
+                            ctx.restore();
+                        } else {
+                            const tLoc = this._mapToScreen.transform(ship.loc);
+                            ctx.save();
+                            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                            ctx.translate(tLoc.x, tLoc.y);
+                            ctx.scale(0.01 * this._mapToScreen.scale, -0.01 * this._mapToScreen.scale);
+                            ctx.fill(ShipPath);
+                            ctx.restore();
+                        }
+                    }
                 }
-            }
-        }
 
-        if (this.renderDebugText) {
-            ctx.font = "16px Courier New";
-            ctx.fillStyle = "red";
-            ctx.textAlign = 'left';
-            ctx.fillText(`  offset: ${this._mapToScreen.offset}`, 10, 16);
-            ctx.fillText(`   scale: ${this._mapToScreen.scale.toFixed(3)}`, 10, 32);
-            ctx.fillText(`viewport: ${tlMap}, ${brMap}`, 10, 48);
-            ctx.fillText(` sectors: ${tlSect}, ${brSect}`, 10, 64);
-            ctx.fillText(`  ${fps.toFixed(1)} FPS`, 10, 80);
-        }
-
-        window.requestAnimationFrame(() => this.render());
+                if (this.renderDebugText) {
+                    ctx.font = "16px Courier New";
+                    ctx.fillStyle = "red";
+                    ctx.textAlign = 'left';
+                    ctx.fillText(`  offset: ${this._mapToScreen.offset}`, 10, 16);
+                    ctx.fillText(`   scale: ${this._mapToScreen.scale.toFixed(3)}`, 10, 32);
+                    ctx.fillText(`viewport: ${tlMap}, ${brMap}`, 10, 48);
+                    ctx.fillText(` sectors: ${tlSect}, ${brSect}`, 10, 64);
+                    ctx.fillText(`  ${fps.toFixed(1)} FPS`, 10, 80);
+                }
+            })();
+        } while (true);
     }
 
     private mouseDown(e: MouseEvent): void {
@@ -246,38 +258,39 @@ export class Renderer {
 
     private mouseUp(e: MouseEvent): void {
         this._lastMouseCoord = null;
-        
+
         if (e.button !== 0) {
             // only handle left clicks
             return;
         }
 
-        
+
         const clickMapPoint = this._mapToScreen.untransform(new Point(e.clientX, e.clientY));
         const sx = Math.floor(clickMapPoint.x / this._sectorSize);
         const sy = Math.floor(clickMapPoint.y / this._sectorSize);
-        const sectors = this._sectorSource.getSectors(sx, sy);
-        console.log(clickMapPoint);
+        this._sectorSource.getSectors(sx, sy).then(sectors => {
+            console.log(clickMapPoint);
 
-        const clickD = Math.max(7, 7 / this._mapToScreen.scale);
-        console.log(`Checking if anything is within ${clickD} of click`);
-        for (const star of sectors[sx][sy]) {
-            const d = distance(clickMapPoint, star);
-            console.log(`${star.name} (${star.id}) ${d} from click`);
-            if (d < clickD) {
-                this.selectedItem = {type: 'Star', item: star};
-                return;
-            }
-            for (const planet of star.planets) {
-                const d = distance(clickMapPoint, planet);
-                console.log(`${star.name}[${planet.id}] ${d} from click`);
+            const clickD = Math.max(7, 7 / this._mapToScreen.scale);
+            console.log(`Checking if anything is within ${clickD} of click`);
+            for (const star of sectors[sx][sy]) {
+                const d = distance(clickMapPoint, star);
+                console.log(`${star.name} (${star.id}) ${d} from click`);
                 if (d < clickD) {
-                    this.selectedItem = {type: 'Planet', item: planet};
+                    this.selectedItem = { type: 'Star', item: star };
                     return;
                 }
+                for (const planet of star.planets) {
+                    const d = distance(clickMapPoint, planet);
+                    console.log(`${star.name}[${planet.id}] ${d} from click`);
+                    if (d < clickD) {
+                        this.selectedItem = { type: 'Planet', item: planet };
+                        return;
+                    }
+                }
             }
-        }
-        this.selectedItem = undefined;
+            this.selectedItem = undefined;
+        });
     }
 
     private mouseMove(e: MouseEvent): void {

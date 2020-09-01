@@ -1,5 +1,6 @@
-import * as server from "../server/stars";
 import * as _ from "lodash";
+import { GetStarResponse,  GetPlanetMetaResponse } from "../worker/messaging";
+import { wrap, Remote } from "comlink";
 
 export type MineralType = "ironium" | "boranium" | "germanium";
 export type Minerals = { [mt in MineralType]: number };
@@ -31,8 +32,8 @@ export interface PlanetMeta {
     radiation: number;
     surface: Minerals;
     concentration: Minerals;
-    factories: {count: number, max: number};
-    mines: {count: number, max: number};
+    factories: { count: number, max: number };
+    mines: { count: number, max: number };
     population: number;
 }
 
@@ -46,49 +47,46 @@ export class Star {
     planets: Planet[];
 }
 
+type ServerWorkerAPI = Remote<import("../server/worker").ServerWorker>;
+
 export class StarsClient {
-    private readonly _db: server.StarDB;
+    private readonly _client: Remote<ServerWorkerAPI>;
 
-    constructor(db: server.StarDB) {
-        this._db = db;
+    constructor(worker: Worker) {
+        this._client = wrap<ServerWorkerAPI>(worker);
     }
 
-    getStar(id: string): Star|undefined {
-        const s = this._db.getStar(id);
-        if (s === undefined) return undefined;
-        return this.mapStar(s);
+    async getStar(id: string): Promise<Star | undefined> {
+        const resp = await this._client.getStar(id);
+        if (resp === undefined) return undefined;
+        return StarsClient.mapStar(resp);
     }
 
-    getPlanet(starId: string, planetId: string): Planet|undefined {
-        const s = this.getStar(starId);
+    async getPlanet(starId: string, planetId: string): Promise<Planet | undefined> {
+        const s = await this.getStar(starId);
         if (s === undefined) return undefined;
         return _.head(_.filter(s.planets, p => p.id == planetId));
     }
 
-    getPlanetMeta(starId: string, planetId: string): PlanetMeta|undefined {
-        const s = this._db.getStar(starId);
-        if (s === undefined) return undefined;
-        const p = _.head(_.filter(s.planets, p => p.id == planetId));
-        if (p === undefined) return undefined;
-        return p.meta;
+    async getPlanetMeta(starId: string, planetId: string): Promise<PlanetMeta | undefined> {
+        const meta = await this._client.getPlanetMeta(starId, planetId);
+        if (meta === undefined) return undefined;
+        return StarsClient.mapPlanetMeta(meta);
     }
 
-    getSectors(sxMin: number, syMin: number, sxMax?: number, syMax?: number): Star[][][] {
-        if (sxMax === undefined) sxMax = sxMin;
-        if (syMax === undefined) syMax = syMin;
-
-        const stars = this._db.getSectors(sxMin, syMin, sxMax, syMax);
+    async getSectors(sxMin: number, syMin: number, sxMax?: number, syMax?: number): Promise<Star[][][]> {
+        const stars = await this._client.getSectors(sxMin, syMin, sxMax, syMax);
         const result: Star[][][] = [];
-        for (let sx=sxMin; sx<=sxMax; sx++) {
+        for (const sx in stars) {
             result[sx] = [];
-            for (let sy=syMin; sy<=syMax; sy++) {
-                result[sx][sy] = _.map(stars[sx][sy], dbStar => this.mapStar(dbStar));
+            for (const sy in stars[sx]) {
+                result[sx][sy] = _.map(stars[sx][sy], StarsClient.mapStar);
             }
         }
         return result;
     }
 
-    private mapStar(dbStar: server.Star): Star {
+    private static mapStar(dbStar: GetStarResponse): Star {
         const s = new Star();
         s.id = dbStar.id;
         s.name = dbStar.name;
@@ -96,18 +94,29 @@ export class StarsClient {
         s.y = dbStar.y;
         s.sx = dbStar.sx;
         s.sy = dbStar.sy;
-        s.planets = _.map(dbStar.planets, dbPlanet => this.mapPlanet(s, dbPlanet));
+        s.planets = _.map(dbStar.planets, dbPlanet => {
+            const p = new Planet();
+            p.id = dbPlanet.id;
+            p.star = s;
+            p.name = dbPlanet.name;
+            p.r = dbPlanet.r;
+            p.phi = dbPlanet.phi;
+            p.year = dbPlanet.year;
+            return p;
+        });
         return s;
-}
+    }
 
-    private mapPlanet(star: Star, dbPlanet: server.Planet): Planet {
-        const p = new Planet();
-        p.id = dbPlanet.id;
-        p.star = star;
-        p.name = dbPlanet.name;
-        p.r = dbPlanet.r;
-        p.phi = dbPlanet.phi;
-        p.year = dbPlanet.year;
-        return p;
+    private static mapPlanetMeta(meta: GetPlanetMetaResponse): PlanetMeta {
+        return {
+            gravity: meta.gravity,
+            temperature: meta.temperature,
+            radiation: meta.radiation,
+            surface: meta.surface,
+            concentration: meta.concentration,
+            factories: meta.factories,
+            mines: meta.mines,
+            population: meta.population
+        };
     }
 }

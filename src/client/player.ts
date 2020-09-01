@@ -1,7 +1,7 @@
 import { Star, Planet, StarsClient, PlanetMeta } from "./stars";
 import { Point } from "../2d";
-import { PlayerInfo } from "../server/player";
 import * as _ from "lodash";
+import { wrap, Remote } from "comlink";
 
 export interface Ship {
     loc: Star | Planet | Point
@@ -11,50 +11,54 @@ export class PlanetWithMeta extends Planet {
     meta: PlanetMeta;
 }
 
+type ServerWorkerAPI = Remote<import("../server/worker").ServerWorker>;
+
 export class PlayerClient {
     private readonly _starClient: StarsClient;
-    private readonly _playerDb: PlayerInfo;
+    private readonly _serverClient: Remote<ServerWorkerAPI>;
 
-    constructor(starClient: StarsClient, playerDb: PlayerInfo) {
+    constructor(starClient: StarsClient, worker: Worker) {
         this._starClient = starClient;
-        this._playerDb = playerDb;
+        this._serverClient = wrap<ServerWorkerAPI>(worker);
     }
 
-    get homeworld(): Planet {
-        const hw = this._starClient.getPlanet(this._playerDb.homeworld.starId, this._playerDb.homeworld.id);
+    async getHomeworld(): Promise<Planet> {
+        const serverHw = await this._serverClient.getHomeworld();
+        const hw = await this._starClient.getPlanet(serverHw.starId, serverHw.id);
         if (hw === undefined) {
-            throw `Player homeworld is undefined (starId: ${this._playerDb.homeworld.starId}, planetId: ${this._playerDb.homeworld.id})`;
+            throw `Player homeworld is undefined (starId: ${serverHw.starId}, planetId: ${serverHw.id})`;
         }
         return hw;
     }
 
-    get planets(): Readonly<PlanetWithMeta[]> {
-        return _.map(this._playerDb.planets, dbPlanet => {
-            const p = this._starClient.getPlanet(dbPlanet.starId, dbPlanet.id)!;
-            const meta = this._starClient.getPlanetMeta(dbPlanet.starId, dbPlanet.id)!;
-            const pwm = Object.assign(new PlanetWithMeta(), p);
-            pwm.meta = meta;
+    async getPlanets(): Promise<Readonly<PlanetWithMeta[]>> {
+        return await Promise.all(_.map(await this._serverClient.getPlanets(), async dbPlanet => {
+            const p = await this._starClient.getPlanet(dbPlanet.starId, dbPlanet.id);
+            const meta = await this._starClient.getPlanetMeta(dbPlanet.starId, dbPlanet.id);
+            const pwm = Object.assign(new PlanetWithMeta(), p!);
+            pwm.meta = meta!;
             return pwm;
-        });
+        }));
     }
 
-    get ships(): Readonly<Ship[]> {
-        return _.map(this._playerDb.ships, dbShip => {
+    async getShips(): Promise<Readonly<Ship[]>> {
+        return Promise.all(_.map(await this._serverClient.getShips(), async dbShip => {
             let loc: Star | Planet | Point | undefined;
-            if ("starId" in dbShip.loc) {
-                // planet
-                loc = this._starClient.getPlanet(dbShip.loc.starId, dbShip.loc.id);
-            } else if ("id" in dbShip.loc) {
-                // star
-                loc = this._starClient.getStar(dbShip.loc.id);
-            } else {
-                // point
-                loc = new Point(dbShip.loc.x, dbShip.loc.y);
+            switch (dbShip.loc.type) {
+                case 'Star':
+                    loc = await this._starClient.getStar(dbShip.loc.id);
+                    break;
+                case 'Planet':
+                    loc = await this._starClient.getPlanet(dbShip.loc.starId, dbShip.loc.id);
+                    break;
+                case 'Point':
+                    loc = new Point(dbShip.loc.x, dbShip.loc.y);
+                    break;
             }
             if (loc === undefined) {
                 throw 'location undefined';
             }
             return { loc };
-        });
+        }));
     }
 }

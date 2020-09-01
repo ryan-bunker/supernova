@@ -1,4 +1,7 @@
 const Game = {
+    mapSize: 1000,
+    sectorSize: 1000,
+    starDensity: 10,
     gravityRange: {
         min: 0.12, max: 8
     },

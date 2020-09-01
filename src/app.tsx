@@ -1,8 +1,6 @@
 import * as React from 'react';
 import { createStyles, Theme, WithStyles, withStyles, createMuiTheme } from '@material-ui/core/styles';
 import Grid from '@material-ui/core/Grid';
-import { StarDB } from './server/stars';
-import { PlayerInfo } from './server/player';
 import { Renderer } from './renderer';
 import './style.css';
 import { Point } from './2d';
@@ -11,9 +9,6 @@ import { PlayerClient } from './client/player';
 import MessageList from './message_list';
 import PlanetSummary from './planet_summary';
 import Game from './server/game';
-import { Card, Accordion, AccordionSummary, Typography, AccordionDetails, Tooltip } from '@material-ui/core';
-import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import { Pagination, PaginationItem } from '@material-ui/lab';
 import Sidebar from './sidebar';
 import * as _ from 'lodash';
 
@@ -75,30 +70,32 @@ const styles = (theme: Theme) =>
     });
 
 interface Props extends WithStyles<typeof styles> {
+    serverWorker: Worker;
 }
 
 const App = withStyles(styles)(
     class extends React.Component<Props> {
         private readonly _renderer: Renderer;
-        // server instances
-        private readonly _db = StarDB.generateUniverse('stars! is awesome', MAP_SIZE, SECTOR_SIZE, STAR_DENSITY);
-        private readonly _playerDb = PlayerInfo.generatePlayer(this._db);
         // client instances
-        private readonly _starClient = new StarsClient(this._db);
-        private readonly _playerClient = new PlayerClient(this._starClient, this._playerDb);
+        private readonly _starClient: StarsClient;
+        private readonly _playerClient: PlayerClient;
 
         constructor(props: Props) {
             super(props);
             const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 
+            this._starClient = new StarsClient(props.serverWorker);
+            this._playerClient = new PlayerClient(this._starClient, props.serverWorker);
+
             this._renderer = new Renderer(canvas, SECTOR_SIZE, this._starClient, this._playerClient, item => {
                 console.log(item);
+
                 if (item === undefined) {
                     rootData.planet = undefined;
                     rootData.planetMeta = undefined;
                 } else if (item.type == 'Planet') {
                     rootData.planet = item.item;
-                    rootData.planetMeta = this._starClient.getPlanetMeta(item.item.star.id, item.item.id);
+                    this._starClient.getPlanetMeta(item.item.star.id, item.item.id).then(meta => rootData.planetMeta = meta);
                 } else {
                     rootData.planet = undefined;
                     rootData.planetMeta = undefined;
@@ -107,15 +104,18 @@ const App = withStyles(styles)(
             });
 
             this._renderer.transform.scale = 5;
-            const homeworld = this._playerClient.homeworld;
-            this._renderer.selectedItem = { type: "Planet", item: homeworld };
-            const { x, y } = this._renderer.transform.transform(new Point(homeworld.star.x, homeworld.star.y));
-            this._renderer.transform.translateTo(-x + canvas.width / 2, -y + canvas.height / 3);
+            this._playerClient.getHomeworld().then(
+                homeworld => {
+                    this._renderer.selectedItem = { type: "Planet", item: homeworld };
+                    const { x, y } = this._renderer.transform.transform(new Point(homeworld.star.x, homeworld.star.y));
+                    this._renderer.transform.translateTo(-x + canvas.width / 2, -y + canvas.height / 3);
+
+                    this._renderer.render();
+                });
         }
 
         render() {
             const { classes } = this.props;
-            window.requestAnimationFrame(() => this._renderer.render());
 
             let selectedSummary: JSX.Element | null = null;
             if (rootData.planet) {
@@ -141,7 +141,7 @@ const App = withStyles(styles)(
                         </Grid>
                     </div>
                     <div className={classes.sidebar}>
-                        <Sidebar planets={_.map(this._playerClient.planets, p => { return {p, m: p.meta}; })} />
+                        {/* <Sidebar planets={_.map(this._playerClient.planets, p => { return { p, m: p.meta }; })} /> */}
                     </div>
                 </>
             );

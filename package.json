@@ -31,10 +31,12 @@
     "@types/react": "^16.9.46",
     "@types/react-dom": "^16.9.8",
     "@types/uuid": "^8.3.0",
+    "comlink": "^4.3.0",
     "lodash": "^4.17.20",
     "rand-seed": "^0.1.5",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
-    "uuid": "^8.3.0"
+    "uuid": "^8.3.0",
+    "worker-plugin": "^5.0.0"
   }
 }
