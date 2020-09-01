@@ -42,15 +42,15 @@ export default function PlanetPanel(props: Props) {
                             <TableBody>
                                 <TableRow>
                                     <TableCell component="th" scope="row">Ironium</TableCell>
-                                    <TableCell align="right">{props.meta.surface.ironium} kT</TableCell>
+                                    <TableCell align="right">{props.meta.surface.ironium.toLocaleString()} kT</TableCell>
                                 </TableRow>
                                 <TableRow>
                                     <TableCell component="th" scope="row">Boranium</TableCell>
-                                    <TableCell align="right">{props.meta.surface.boranium} kT</TableCell>
+                                    <TableCell align="right">{props.meta.surface.boranium.toLocaleString()} kT</TableCell>
                                 </TableRow>
                                 <TableRow>
                                     <TableCell component="th" scope="row">Germanium</TableCell>
-                                    <TableCell align="right">{props.meta.surface.germanium} kT</TableCell>
+                                    <TableCell align="right">{props.meta.surface.germanium.toLocaleString()} kT</TableCell>
                                 </TableRow>
                                 <TableRow>
                                     <TableCell component="th" scope="row">Mines</TableCell>
@@ -62,7 +62,7 @@ export default function PlanetPanel(props: Props) {
                                 </TableRow>
                                 <TableRow>
                                     <TableCell component="th" scope="row">Population</TableCell>
-                                    <TableCell align="right">{props.meta.population}</TableCell>
+                                    <TableCell align="right">{props.meta.population.toLocaleString()}</TableCell>
                                 </TableRow>
                                 <TableRow>
                                     <TableCell component="th" scope="row">Resources/Year</TableCell>
