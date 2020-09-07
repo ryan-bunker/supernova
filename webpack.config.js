@@ -6,7 +6,7 @@ const WorkerPlugin = require('worker-plugin');
 module.exports = {
     mode: 'development',
     entry: {
-        app: './src/index.tsx',
+        app: './src/app/index.tsx',
     },
     devtool: 'inline-source-map',
     devServer: {
@@ -17,7 +17,7 @@ module.exports = {
         new WorkerPlugin(),
         new HtmlWebpackPlugin({
             title: 'Output Management',
-            template: './src/index.html'
+            template: './src/app/index.html'
         }),
     ],
     output: {
@@ -41,6 +41,6 @@ module.exports = {
         ],
     },
     resolve: {
-        extensions: [ '.tsx', '.ts', '.js' ],
+        extensions: ['.tsx', '.ts', '.js'],
     },
 };
