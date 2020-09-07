@@ -1,3 +1,6 @@
+### application specific
+*.db
+
 ### app (react, JS, TS, npm)
 ###############
 
