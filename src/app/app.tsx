@@ -13,7 +13,7 @@ import Sidebar from './sidebar';
 import * as _ from 'lodash';
 
 const MAP_SIZE = 1000,
-    SECTOR_SIZE = 1000,
+    SECTOR_SIZE = 30_860_000_000_000_000,
     STAR_DENSITY = 10;
 
 const styles = (theme: Theme) =>
@@ -103,17 +103,18 @@ const App = withStyles(styles)(
                 }
             });
 
-            this._renderer.transform.scale = 5;
-            this._playerClient.getHomeworld().then(
-                homeworld => {
-                    this._renderer.selectedItem = { type: "Planet", item: homeworld };
-                    const { x, y } = this._renderer.transform.transform(new Point(homeworld.star.x, homeworld.star.y));
-                    this._renderer.transform.translateTo(-x + canvas.width / 2, -y + canvas.height / 3);
-
-                    this._renderer.render();
-                });
-
-            this._playerClient.getPlanets().then(planets => this.setState({ planets }))
+            // this._renderer.transform.scale = 5;
+            // this._playerClient.getHomeworld().then(
+            //     homeworld => {
+            //         this._renderer.selectedItem = { type: "Planet", item: homeworld };
+            //         const { x, y } = this._renderer.transform.transform(new Point(homeworld.star.x, homeworld.star.y));
+            //         this._renderer.transform.translateTo(-x + canvas.width / 2, -y + canvas.height / 3);
+            //
+            //         this._renderer.render();
+            //     });
+            //
+            // this._playerClient.getPlanets().then(planets => this.setState({ planets }))
+            this._renderer.render();
         }
 
         render() {
@@ -132,19 +133,19 @@ const App = withStyles(styles)(
 
             return (
                 <>
-                    <div className={classes.footer}>
-                        <Grid container spacing={3} style={{ height: 'calc(100% + 24px)' }}>
-                            <Grid item xs style={{ height: '100%' }}>
-                                <MessageList messages={this.state.messages} />
-                            </Grid>
-                            <Grid item xs style={{ height: '100%' }}>
-                                {selectedSummary}
-                            </Grid>
-                        </Grid>
-                    </div>
-                    <div className={classes.sidebar}>
-                        <Sidebar planets={this.state.planets} />
-                    </div>
+                    {/*<div className={classes.footer}>*/}
+                    {/*    <Grid container spacing={3} style={{ height: 'calc(100% + 24px)' }}>*/}
+                    {/*        <Grid item xs style={{ height: '100%' }}>*/}
+                    {/*            <MessageList messages={this.state.messages} />*/}
+                    {/*        </Grid>*/}
+                    {/*        <Grid item xs style={{ height: '100%' }}>*/}
+                    {/*            {selectedSummary}*/}
+                    {/*        </Grid>*/}
+                    {/*    </Grid>*/}
+                    {/*</div>*/}
+                    {/*<div className={classes.sidebar}>*/}
+                    {/*    <Sidebar planets={this.state.planets} />*/}
+                    {/*</div>*/}
                 </>
             );
         }

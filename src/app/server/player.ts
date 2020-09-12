@@ -25,7 +25,7 @@ export class PlayerInfo {
         // look for a homeworld for the player
         const player = new PlayerInfo();
         for (let sx=0; ; sx++) {
-            const [[sector]] = db.getSectors(sx, 0);
+            const sector = db.getSectors(sx, 0);
             let homestar: Star | null = null;
             let homeworld: Planet | null = null;
             for (const star of sector) {

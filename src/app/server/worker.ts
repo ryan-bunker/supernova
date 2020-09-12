@@ -36,12 +36,9 @@ function getPlanetMeta(starId: string, planetId: string): GetPlanetMetaResponse 
 
 function getSectors(minX: number, minY: number, maxX?: number, maxY?: number): GetSectorsResponse {
     const sect = starDb.getSectors(minX, minY, maxX, maxY);
-    let resp: GetSectorsResponse | undefined = [];
-    for (const sx in sect) {
-        resp[sx] = [];
-        for (const sy in sect[sx]) {
-            resp[sx][sy] = _.map(sect[sx][sy], mapStar);
-        }
+    let resp: GetSectorsResponse = [];
+    for (const star of sect) {
+        resp.push(mapStar(star));
     }
     return resp;
 }

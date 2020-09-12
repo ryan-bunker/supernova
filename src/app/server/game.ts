@@ -1,6 +1,6 @@
 const Game = {
-    mapSize: 1000,
-    sectorSize: 1000,
+    mapSize: 3.086e16,
+    sectorSize: 3.086e16,
     starDensity: 10,
     gravityRange: {
         min: 0.12, max: 8

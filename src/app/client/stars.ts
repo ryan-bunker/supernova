@@ -74,14 +74,11 @@ export class StarsClient {
         return StarsClient.mapPlanetMeta(meta);
     }
 
-    async getSectors(sxMin: number, syMin: number, sxMax?: number, syMax?: number): Promise<Star[][][]> {
+    async getSectors(sxMin: number, syMin: number, sxMax?: number, syMax?: number): Promise<Star[]> {
         const stars = await this._client.getSectors(sxMin, syMin, sxMax, syMax);
-        const result: Star[][][] = [];
-        for (const sx in stars) {
-            result[sx] = [];
-            for (const sy in stars[sx]) {
-                result[sx][sy] = _.map(stars[sx][sy], StarsClient.mapStar);
-            }
+        const result: Star[] = [];
+        for (const star of stars) {
+            result.push(StarsClient.mapStar(star));
         }
         return result;
     }

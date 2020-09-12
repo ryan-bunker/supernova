@@ -57,15 +57,14 @@ export class StarDB {
         return this._stars[id];
     }
 
-    public getSectors(minX: number, minY: number, maxX?: number, maxY?: number): Star[][][] {
+    public getSectors(minX: number, minY: number, maxX?: number, maxY?: number): Star[] {
         if (maxX === undefined) maxX = minX;
         if (maxY === undefined) maxY = minY;
 
-        const block: Star[][][] = [];
+        const block: Star[] = [];
         for (let sx = minX; sx <= maxX; sx++) {
-            block[sx] = [];
             for (let sy = minY; sy <= maxY; sy++) {
-                block[sx][sy] = this.getSectorStars(sx, sy);
+                block.push(...this.getSectorStars(sx, sy));
             }
         }
         return block;
@@ -93,27 +92,28 @@ export class StarDB {
         return stars;
     }
 
-    private generateStar(x: number, y: number): Star {
+    private generateStar(sectorX: number, sectorY: number): Star {
         const adj = names.adjectives[Math.floor(this._rand.next() * names.adjectives.length)];
         const noun = names.nouns[Math.floor(this._rand.next() * names.nouns.length)];
         const s: Star = {
             id: uuidv4(),
             name: `${adj.charAt(0).toUpperCase() + adj.slice(1)} ${noun.charAt(0).toUpperCase() + noun.slice(1)}`,
-            x, y,
-            sx: Math.floor(x / this._sectorSize),
-            sy: Math.floor(y / this._sectorSize),
+            x: Math.floor(this._rand.next() * this._sectorSize),
+            y: Math.floor(this._rand.next() * this._sectorSize),
+            sx: sectorX,
+            sy: sectorY,
             planets: []
         };
 
         const counts = [0, 1, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 6, 7];
         const planetCount = counts[Math.floor(this._rand.next() * counts.length)];
-        let currentR = 10;
+        let currentR = 1e10;
         for (let i = 0; i < planetCount; i++) {
             const p: Planet = {
                 id: uuidv4(),
                 starId: s.id,
                 name: `${s.name} ${planetMonikers[i]}`,
-                r: currentR + Math.floor(this._rand.next() * 20) + 5,
+                r: currentR + Math.floor(this._rand.next() * 1.96e12) + 4e10,
                 phi: this._rand.next() * 2 * Math.PI,
                 year: this._rand.next() * 0.8 + 0.2,
                 meta: {
@@ -152,21 +152,21 @@ export class StarDB {
         // generate 'count' random stars with random positions
         for (let i = 0; i < count; i++) {
             let x: number, y: number;
-            while (true) {
+            //while (true) {
                 x = Math.floor((this._rand.next() + sx) * this._sectorSize);
                 y = Math.floor((this._rand.next() + sy) * this._sectorSize);
-                let overlaps = false;
-                for (const starIdx of sector) {
-                    const otherStar = this._stars[starIdx];
-                    const v = new Vector({ x, y }, otherStar);
-                    if (distanceSq({ x, y }, otherStar) < 175 * 175) {
-                        overlaps = true;
-                        break;
-                    }
-                }
-                if (!overlaps) break;
-            }
-            const s = this.generateStar(x, y);
+                // let overlaps = false;
+                // for (const starIdx of sector) {
+                //     const otherStar = this._stars[starIdx];
+                //     const v = new Vector({ x, y }, otherStar);
+                //     if (distanceSq({ x, y }, otherStar) < 175 * 175) {
+                //         overlaps = true;
+                //         break;
+                //     }
+                // }
+                // if (!overlaps) break;
+            //}
+            const s = this.generateStar(sx, sy);
             sector.push(s.id);
         }
 

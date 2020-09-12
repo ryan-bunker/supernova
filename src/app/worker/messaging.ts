@@ -54,4 +54,4 @@ export interface GetShipResponse {
     loc: Location;
 }
 
-export type GetSectorsResponse = GetStarResponse[][][];
+export type GetSectorsResponse = GetStarResponse[];
