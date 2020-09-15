@@ -1,4 +1,4 @@
-import {BigPoint, Point} from "./2d";
+import {Point} from "./2d";
 import {Planet, Star} from "./client/stars";
 import {Ship} from "./client/player";
 
@@ -33,11 +33,11 @@ const ShipPath = new Path2D('M-30.55555,40.55594    c0,-46.80785 12.93585,-116.9
 
 export class Renderer {
     private readonly _canvas: HTMLCanvasElement;
-    private readonly _sectorSize: bigint;
+    private readonly _sectorSize: number;
     private readonly _sectorSource: SectorSource;
     private readonly _playerData: PlayerData;
-    private _mapScale: bigint = 61_720_000_000_000n;
-    private _mapOffset = new BigPoint();
+    private _mapScale = 1 / 61_720_000_000_000;
+    private _mapOffset = new Point();
     private readonly _onSelected: (i: SelectedItem | undefined) => void;
     private _lastMouseCoord: Point | null;
     private _lastFrame: number;
@@ -45,7 +45,7 @@ export class Renderer {
 
     constructor(canvas: HTMLCanvasElement, sectorSize: number, sectorSource: SectorSource, playerData: PlayerData, onSelected: (i: SelectedItem | undefined) => void) {
         this._canvas = canvas;
-        this._sectorSize = BigInt(sectorSize);
+        this._sectorSize = sectorSize;
         this._sectorSource = sectorSource;
         this._playerData = playerData;
         this._onSelected = onSelected;
@@ -83,16 +83,24 @@ export class Renderer {
 
     private toScreen(mapPt: { sx: number, sy: number, x: number, y: number }): Point {
         const {sx, sy, x, y} = mapPt;
+        const screenSectorSize = this._sectorSize * this._mapScale;
         return new Point(
-            Number((BigInt(sx) * this._sectorSize + BigInt(x)) / this._mapScale + this._mapOffset.x),
-            Number((BigInt(sy) * this._sectorSize + BigInt(y)) / this._mapScale + this._mapOffset.y));
+            sx * screenSectorSize + x * this._mapScale + this._mapOffset.x,
+            sy * screenSectorSize + y * this._mapScale + this._mapOffset.y);
+    }
+    
+    private screenToSector(screenPt: { x: number, y: number }): Point {
+        const screenSectorSize = this._sectorSize * this._mapScale;
+        return new Point(
+            Math.floor(screenPt.x / screenSectorSize - this._mapOffset.x / screenSectorSize),
+            Math.floor(screenPt.y / screenSectorSize - this._mapOffset.y / screenSectorSize));
     }
 
-    private toMap(screenPt: { x: number, y: number }, scale?: bigint): BigPoint {
+    private toMap(screenPt: { x: number, y: number }): Point {
         const {x: screenX, y: screenY} = screenPt;
-        return new BigPoint(
-            (BigInt(screenX) - this._mapOffset.x) * (scale || this._mapScale),
-            (BigInt(screenY) - this._mapOffset.y) * (scale || this._mapScale));
+        return new Point(
+            (screenX - this._mapOffset.x) / this._mapScale,
+            (screenY - this._mapOffset.y) / this._mapScale);
     }
 
     public async render(): Promise<void> {
@@ -101,18 +109,8 @@ export class Renderer {
             this._lastFrame = Date.now();
 
             // project screen viewport into map coordinates
-            const tlScreen = {x: 0, y: 0};
-            const brScreen = {x: this._canvas.width, y: this._canvas.height};
-            const tlMap = this.toMap(tlScreen);
-            const brMap = this.toMap(brScreen);
-            const tlSect = {
-                x: Math.floor(Number(tlMap.x * 100n / this._sectorSize) / 100), 
-                y: Math.floor(Number(tlMap.y * 100n / this._sectorSize) / 100)
-            };
-            const brSect = {
-                x: Math.floor(Number(brMap.x * 100n / this._sectorSize) / 100), 
-                y: Math.floor(Number(brMap.y * 100n / this._sectorSize) / 100)
-            };
+            const tlSect = this.screenToSector({x: 0, y:0});
+            const brSect = this.screenToSector({x: this._canvas.width, y: this._canvas.height});
 
             // get all of our render state
             const [sectors, homeworld, ships] = await Promise.all([
@@ -133,11 +131,11 @@ export class Renderer {
                 const convertToAlpha = (min: number, max: number, value: number) =>
                     Math.max(0, Math.min((min - value) / (min - max), 1.0));
 
-                const nameAlphaMin = 5 * Number(this._sectorSize) / this._canvas.width,
-                    nameAlphaMax = Number(this._sectorSize) / this._canvas.width;
+                const nameAlphaMin = 1/(5 * Number(this._sectorSize) / this._canvas.width),
+                    nameAlphaMax = 1/(Number(this._sectorSize) / this._canvas.width);
                 const alpha = convertToAlpha(nameAlphaMin, nameAlphaMax, Number(this._mapScale));
 
-                const planetAlphaMin = 800_000_000_000, planetAlphaMax = 10_000_000_000;
+                const planetAlphaMin = 1/800_000_000_000, planetAlphaMax = 1/10_000_000_000;
                 const planetAlpha = convertToAlpha(planetAlphaMin, planetAlphaMax, Number(this._mapScale));
 
                 if (this.renderSectorGrid) {
@@ -170,7 +168,7 @@ export class Renderer {
                     const tp = this.toScreen(star);
                     ctx.fillStyle = "white"; //this._playerData.homeworld.star.id === star.id ? "blue" : "white";
                     ctx.beginPath();
-                    const starR = Math.max(5, Number(1_400_000_000n / this._mapScale));
+                    const starR = Math.max(5, Number(1_400_000_000 * this._mapScale));
                     ctx.arc(tp.x, tp.y, starR, 0, 2 * Math.PI);
                     ctx.fill();
 
@@ -202,7 +200,7 @@ export class Renderer {
 
                             // draw orbit first
                             ctx.beginPath();
-                            const orbitR = Number(BigInt(planet.r) / this._mapScale);
+                            const orbitR = Number(planet.r * this._mapScale);
                             ctx.arc(tp.x, tp.y, orbitR, 0, 2 * Math.PI);
                             ctx.stroke();
                             // now draw planet
@@ -333,8 +331,8 @@ export class Renderer {
 
         const deltaX = e.clientX - this._lastMouseCoord.x;
         const deltaY = e.clientY - this._lastMouseCoord.y;
-        this._mapOffset.x += BigInt(deltaX);
-        this._mapOffset.y += BigInt(deltaY);
+        this._mapOffset.x += deltaX;
+        this._mapOffset.y += deltaY;
 
         this._lastMouseCoord = new Point(e.clientX, e.clientY);
     }
@@ -345,19 +343,14 @@ export class Renderer {
         const eventId = ++this.eventId;
 
         const oldScale = this._mapScale;
-        let newScale = this._mapScale + (this._mapScale / 200n) * BigInt(Math.floor(e.deltaY));
-        if (newScale < 1e10) {
-            newScale = 10_000_000_000n;
-        } else if (newScale > 10n * this._sectorSize / BigInt(this._canvas.width)) {
-            newScale = 10n * this._sectorSize / BigInt(this._canvas.width);
+        let newScale = this._mapScale + (this._mapScale * 0.005) * e.deltaY;
+        if (newScale > (1 / 1e10)) {
+            newScale = 1 / 10_000_000_000;
+        } else if (newScale < 1 / (10 * (this._sectorSize / this._canvas.width))) {
+            newScale = 1 / (10 * (this._sectorSize / this._canvas.width));
         }
-        let zoomPoint = this.toMap({x: e.clientX, y: e.clientY}, oldScale);
-        console.log(zoomPoint);
-
-        const zoomSect = {
-            x: Math.floor(Number(zoomPoint.x * 100n / this._sectorSize) / 100),
-            y: Math.floor(Number(zoomPoint.y * 100n / this._sectorSize) / 100)
-        };
+        let zoomPoint = new Point(e.clientX, e.clientY);
+        const zoomSect = this.screenToSector({x: e.clientX, y: e.clientY});
         this._sectorSource.getSectors(zoomSect.x, zoomSect.y).then(sector => {
             if (eventId !== this.eventId) {
                 return;
@@ -367,9 +360,8 @@ export class Renderer {
                 let {x, y} = this.toScreen(star);
                 let d = Math.sqrt(Math.pow(x - e.clientX, 2) + Math.pow(y - e.clientY, 2));
                 if (d < 10) {
-                    console.log(`Snapping to ${star.name}`);
-                    zoomPoint.x = BigInt(star.sx) * this._sectorSize + BigInt(star.x);
-                    zoomPoint.y = BigInt(star.sy) * this._sectorSize + BigInt(star.y);
+                    console.log(`Snapping to ${star.name} @ ${x}, ${y}`);
+                    zoomPoint = new Point(x, y);
                     break;
                 }
 
@@ -386,11 +378,11 @@ export class Renderer {
                 //     }
                 // }
             }
-
+            
             this._mapScale = newScale;
-            this._mapOffset = new BigPoint(
-                this._mapOffset.x - zoomPoint.x / newScale + zoomPoint.x / oldScale,
-                this._mapOffset.y - zoomPoint.y / newScale + zoomPoint.y / oldScale);
+            this._mapOffset = new Point(
+                zoomPoint.x * (1 - newScale / oldScale) + this._mapOffset.x * (newScale / oldScale),
+                zoomPoint.y * (1 - newScale / oldScale) + this._mapOffset.y * (newScale / oldScale));
         });
     }
 
