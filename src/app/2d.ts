@@ -12,6 +12,20 @@ export class Point {
     }
 }
 
+export class BigPoint {
+    x: bigint;
+    y: bigint;
+    
+    constructor(x: bigint = 0n, y: bigint = 0n) {
+        this.x = x;
+        this.y = y;
+    }
+
+    toString(): string {
+        return `(${this.x}, ${this.y})`;
+    }
+}
+
 export class Vector extends Point {
     constructor(start: Point, end: Point) {
         super(end.x - start.x, end.y - start.y);
