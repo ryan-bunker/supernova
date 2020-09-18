@@ -1,6 +1,7 @@
 import * as _ from "lodash";
 import { GetStarResponse,  GetPlanetMetaResponse } from "../worker/messaging";
 import { wrap, Remote } from "comlink";
+import {ApolloClient, gql} from "apollo-boost";
 
 export type MineralType = "ironium" | "boranium" | "germanium";
 export type Minerals = { [mt in MineralType]: number };
@@ -51,9 +52,11 @@ type ServerWorkerAPI = Remote<import("../server/worker").ServerWorker>;
 
 export class StarsClient {
     private readonly _client: Remote<ServerWorkerAPI>;
+    private readonly _apiClient: ApolloClient<any>;
 
-    constructor(worker: Worker) {
+    constructor(worker: Worker, client: ApolloClient<any>) {
         this._client = wrap<ServerWorkerAPI>(worker);
+        this._apiClient = client;
     }
 
     async getStar(id: string): Promise<Star | undefined> {
@@ -75,12 +78,46 @@ export class StarsClient {
     }
 
     async getSectors(sxMin: number, syMin: number, sxMax?: number, syMax?: number): Promise<Star[]> {
-        const stars = await this._client.getSectors(sxMin, syMin, sxMax, syMax);
-        const result: Star[] = [];
-        for (const star of stars) {
-            result.push(StarsClient.mapStar(star));
-        }
-        return result;
+        if (sxMax === undefined) sxMax = sxMin;
+        if (syMax === undefined) syMax = syMin;
+
+        const result = await this._apiClient.query({
+            query: gql`
+                {
+                    sectors(sxMin: ${sxMin}, syMin: ${syMin}, sxMax: ${sxMax}, syMax: ${syMax}) {
+                        id
+                        name
+                        sectorX
+                        sectorY
+                        x
+                        y
+                        planets {
+                            id
+                            name
+                            phi
+                            r
+                            year
+                        }
+                    }
+                }`
+        });
+        return _.map<any, Star>(result.data.sectors, (sector: any): Star => ({
+            id: sector.id,
+            name: sector.name,
+            x: sector.x,
+            y: sector.y,
+            sx: sector.sectorX,
+            sy: sector.sectorY,
+            planets: _.map<any, Planet>(sector.planets, (planet: any): Planet =>
+                Object.assign(new Planet(), {
+                    id: planet.id,
+                    name: planet.name,
+                    phi: planet.phi,
+                    r: planet.r,
+                    year: planet.year,
+                    star: sector
+                }))
+        }));
     }
 
     private static mapStar(dbStar: GetStarResponse): Star {

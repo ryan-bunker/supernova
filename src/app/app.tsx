@@ -13,6 +13,7 @@ import Sidebar from './sidebar';
 import * as _ from 'lodash';
 import { ApolloClient } from 'apollo-client';
 import { gql } from 'apollo-boost';
+import { SectorCache } from './sector_cache';
 
 const MAP_SIZE = 1000,
     SECTOR_SIZE = 30_860_000_000_000_000,
@@ -90,48 +91,11 @@ const App = withStyles(styles)(
                 planets: []
             };
 
-            this._starClient = new StarsClient(props.serverWorker);
+            this._starClient = new StarsClient(props.serverWorker, props.graphClient);
             this._playerClient = new PlayerClient(this._starClient, props.serverWorker);
-            
-            const getSectorsFromDb = async (sxMin: number, syMin: number, sxMax?: number, syMax?: number) => {
-                if (sxMax === undefined) {
-                    sxMax = sxMin;
-                }
-                if (syMax === undefined) {
-                    syMax = syMin;
-                }
-                const results: Star[] = [];
-                for (let sx=sxMin; sx<=sxMax; ++sx) {
-                    for (let sy=syMin; sy<=syMax; ++sy) {
-                        const result = await this.props.graphClient.query({
-                            query: gql`
-                        {
-                            sectors(sxMin: ${sx}, syMin: ${sy}, sxMax: ${sx}, syMax: ${sy}) {
-                                id
-                                name
-                                sectorX
-                                sectorY
-                                x
-                                y
-                            }
-                        }`
-                        });
-                        Array.prototype.push.apply(results,
-                            _.map<any, Star>(result.data.sectors, (sector: any): Star => ({
-                                id: sector.id,
-                                name: sector.name,
-                                x: sector.x,
-                                y: sector.y,
-                                sx: sector.sectorX,
-                                sy: sector.sectorY,
-                                planets: []
-                            })));
-                    }
-                }
-                return results;
-            };
+            const sectorCache = new SectorCache(this._starClient);
 
-            this._renderer = new Renderer(canvas, SECTOR_SIZE, { getSectors: getSectorsFromDb }, this._playerClient, item => {
+            this._renderer = new Renderer(canvas, SECTOR_SIZE, sectorCache, this._playerClient, item => {
                 console.log(item);
 
                 if (item === undefined) {

@@ -3,7 +3,7 @@ import {Planet, Star} from "./client/stars";
 import {Ship} from "./client/player";
 
 interface SectorSource {
-    getSectors(sxMin: number, syMin: number, sxMax?: number, syMax?: number): Promise<Star[]>;
+    getSector(sx: number, sy: number): Star[];
 }
 
 interface PlayerData {
@@ -88,7 +88,7 @@ export class Renderer {
             sx * screenSectorSize + x * this._mapScale + this._mapOffset.x,
             sy * screenSectorSize + y * this._mapScale + this._mapOffset.y);
     }
-    
+
     private screenToSector(screenPt: { x: number, y: number }): Point {
         const screenSectorSize = this._sectorSize * this._mapScale;
         return new Point(
@@ -103,72 +103,70 @@ export class Renderer {
             (screenY - this._mapOffset.y) / this._mapScale);
     }
 
-    public async render(): Promise<void> {
-        do {
-            const fps = 1000 / (Date.now() - this._lastFrame);
-            this._lastFrame = Date.now();
+    public render() {
+        const fps = 1000 / (Date.now() - this._lastFrame);
+        this._lastFrame = Date.now();
 
-            // project screen viewport into map coordinates
-            const tlSect = this.screenToSector({x: 0, y:0});
-            const brSect = this.screenToSector({x: this._canvas.width, y: this._canvas.height});
+        // project screen viewport into map coordinates
+        const tlSect = this.screenToSector({x: 0, y: 0});
+        const brSect = this.screenToSector({x: this._canvas.width, y: this._canvas.height});
 
-            // get all of our render state
-            const [sectors, homeworld, ships] = await Promise.all([
-                this._sectorSource.getSectors(tlSect.x, tlSect.y, brSect.x, brSect.y),
-                this._playerData.getHomeworld(),
-                this._playerData.getShips()
-            ]);
+        // get all of our render state
+        // const [sectors, homeworld, ships] = await Promise.all([
+        //     this._sectorSource.getSectors(tlSect.x, tlSect.y, brSect.x, brSect.y),
+        //     this._playerData.getHomeworld(),
+        //     this._playerData.getShips()
+        // ]);
 
-            // wait for next frame to be ready to render
-            await new Promise(window.requestAnimationFrame);
+        const ctx = this._canvas.getContext('2d')!;
+        ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
 
-            // at this point we can't use await anymore, so put this inside its
-            // own iife context to make doing so a compiler error
-            (() => {
-                const ctx = this._canvas.getContext('2d')!;
-                ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+        const convertToAlpha = (min: number, max: number, value: number) =>
+            Math.max(0, Math.min((min - value) / (min - max), 1.0));
 
-                const convertToAlpha = (min: number, max: number, value: number) =>
-                    Math.max(0, Math.min((min - value) / (min - max), 1.0));
+        const nameAlphaMin = 1 / (5 * Number(this._sectorSize) / this._canvas.width),
+            nameAlphaMax = 1 / (Number(this._sectorSize) / this._canvas.width);
+        const alpha = convertToAlpha(nameAlphaMin, nameAlphaMax, Number(this._mapScale));
 
-                const nameAlphaMin = 1/(5 * Number(this._sectorSize) / this._canvas.width),
-                    nameAlphaMax = 1/(Number(this._sectorSize) / this._canvas.width);
-                const alpha = convertToAlpha(nameAlphaMin, nameAlphaMax, Number(this._mapScale));
+        const planetAlphaMin = 7e-14, planetAlphaMax = 1e-11;
+        const planetAlpha = convertToAlpha(planetAlphaMin, planetAlphaMax, Number(this._mapScale));
 
-                const planetAlphaMin = 1/800_000_000_000, planetAlphaMax = 1/10_000_000_000;
-                const planetAlpha = convertToAlpha(planetAlphaMin, planetAlphaMax, Number(this._mapScale));
+        if (this.renderSectorGrid) {
+            ctx.save();
+            ctx.strokeStyle = "gray";
+            ctx.fillStyle = "gray";
+            ctx.setLineDash([10, 10]);
+            ctx.font = "16px Courier New";
 
-                if (this.renderSectorGrid) {
-                    ctx.save();
-                    ctx.strokeStyle = "gray";
-                    ctx.fillStyle = "gray";
-                    ctx.setLineDash([10, 10]);
-                    ctx.font = "16px Courier New";
+            for (let sx = tlSect.x; sx <= brSect.x; sx++) {
+                const {x} = this.toScreen({sx, x: 0, sy: 0, y: 0});
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, this._canvas.height);
+                ctx.stroke();
 
-                    for (let sx = tlSect.x; sx <= brSect.x; sx++) {
-                        const {x} = this.toScreen({sx, x: 0, sy: 0, y: 0});
-                        ctx.moveTo(x, 0);
-                        ctx.lineTo(x, this._canvas.height);
+                for (let sy = tlSect.y; sy <= brSect.y; sy++) {
+                    const {y} = this.toScreen({sx: 0, x: 0, sy, y: 0});
+                    ctx.fillText(`${sx}:${sy}`, x + 4, y + 20);
+                    if (sx == tlSect.x) {
+                        ctx.moveTo(0, y);
+                        ctx.lineTo(this._canvas.width, y);
                         ctx.stroke();
-
-                        for (let sy = tlSect.y; sy <= brSect.y; sy++) {
-                            const {y} = this.toScreen({sx: 0, x: 0, sy, y: 0});
-                            ctx.fillText(`${sx}:${sy}`, x + 4, y + 20);
-                            if (sx == tlSect.x) {
-                                ctx.moveTo(0, y);
-                                ctx.lineTo(this._canvas.width, y);
-                                ctx.stroke();
-                            }
-                        }
                     }
-                    ctx.restore();
                 }
+            }
+            ctx.restore();
+        }
 
+        let starCount = 0;
+        for (let sx = tlSect.x; sx <= brSect.x; ++sx) {
+            for (let sy = tlSect.y; sy <= brSect.y; ++sy) {
+                const sectors = this._sectorSource.getSector(sx, sy);
+                starCount += sectors.length;
                 for (const star of sectors) {
                     const tp = this.toScreen(star);
                     ctx.fillStyle = "white"; //this._playerData.homeworld.star.id === star.id ? "blue" : "white";
                     ctx.beginPath();
-                    const starR = Math.max(5, Number(1_400_000_000 * this._mapScale));
+                    const starR = Math.max(3, Number(1_400_000_000 * this._mapScale));
                     ctx.arc(tp.x, tp.y, starR, 0, 2 * Math.PI);
                     ctx.fill();
 
@@ -192,11 +190,11 @@ export class Renderer {
                     if (planetAlpha > 0) {
                         for (const planet of star.planets) {
                             ctx.strokeStyle = `rgba(128, 128, 128, ${planetAlpha})`;
-                            if (homeworld.star.id === star.id && homeworld.id == planet.id) {
-                                ctx.fillStyle = `rgba(0, 0, 255, ${planetAlpha})`;
-                            } else {
-                                ctx.fillStyle = `rgba(255, 255, 255, ${planetAlpha})`;
-                            }
+                            // if (homeworld.star.id === star.id && homeworld.id == planet.id) {
+                            //     ctx.fillStyle = `rgba(0, 0, 255, ${planetAlpha})`;
+                            // } else {
+                            //     ctx.fillStyle = `rgba(255, 255, 255, ${planetAlpha})`;
+                            // }
 
                             // draw orbit first
                             ctx.beginPath();
@@ -261,20 +259,22 @@ export class Renderer {
                 //         }
                 //     }
                 // }
+            }
+        }
 
-                if (this.renderDebugText) {
-                    ctx.font = "16px Courier New";
-                    ctx.fillStyle = "red";
-                    ctx.textAlign = 'left';
-                    ctx.fillText(`  offset: (${this._mapOffset.x}, ${this._mapOffset.y})`, 10, 16);
-                    ctx.fillText(`   scale: ${this._mapScale}`, 10, 32);
-                    ctx.fillText(`   alpha: ${alpha} (names)  ${planetAlpha} (planets)`, 10, 48);
-                    ctx.fillText(` sectors: [${tlSect.x}, ${tlSect.y}], [${brSect.x}, ${brSect.y}]`, 10, 64);
-                    ctx.fillText(`  ${sectors.length} stars`, 10, 80);
-                    ctx.fillText(`  ${fps.toFixed(1)} FPS`, 10, 96);
-                }
-            })();
-        } while (true);
+        if (this.renderDebugText) {
+            ctx.font = "16px Courier New";
+            ctx.fillStyle = "red";
+            ctx.textAlign = 'left';
+            ctx.fillText(`  offset: (${this._mapOffset.x}, ${this._mapOffset.y})`, 10, 16);
+            ctx.fillText(`   scale: ${this._mapScale}`, 10, 32);
+            ctx.fillText(`   alpha: ${alpha} (names)  ${planetAlpha} (planets)`, 10, 48);
+            ctx.fillText(` sectors: [${tlSect.x}, ${tlSect.y}], [${brSect.x}, ${brSect.y}]`, 10, 64);
+            ctx.fillText(`  ${starCount} stars`, 10, 80);
+            ctx.fillText(`  ${fps.toFixed(1)} FPS`, 10, 96);
+        }
+
+        window.requestAnimationFrame(() => this.render());
     }
 
     private mouseDown(e: MouseEvent): void {
@@ -337,13 +337,9 @@ export class Renderer {
         this._lastMouseCoord = new Point(e.clientX, e.clientY);
     }
 
-    private eventId: number = 0;
-
     private mouseWheel(e: WheelEvent): void {
-        const eventId = ++this.eventId;
-
         const oldScale = this._mapScale;
-        let newScale = this._mapScale + (this._mapScale * 0.005) * e.deltaY;
+        let newScale = this._mapScale + (this._mapScale * 0.005) * -e.deltaY;
         if (newScale > (1 / 1e10)) {
             newScale = 1 / 10_000_000_000;
         } else if (newScale < 1 / (10 * (this._sectorSize / this._canvas.width))) {
@@ -351,39 +347,35 @@ export class Renderer {
         }
         let zoomPoint = new Point(e.clientX, e.clientY);
         const zoomSect = this.screenToSector({x: e.clientX, y: e.clientY});
-        this._sectorSource.getSectors(zoomSect.x, zoomSect.y).then(sector => {
-            if (eventId !== this.eventId) {
-                return;
+        const stars = this._sectorSource.getSector(zoomSect.x, zoomSect.y);
+
+        for (const star of stars) {
+            let {x, y} = this.toScreen(star);
+            let d = Math.sqrt(Math.pow(x - e.clientX, 2) + Math.pow(y - e.clientY, 2));
+            if (d < 10) {
+                console.log(`Snapping to ${star.name} @ ${x}, ${y}`);
+                zoomPoint = new Point(x, y);
+                break;
             }
 
-            for (const star of sector) {
-                let {x, y} = this.toScreen(star);
-                let d = Math.sqrt(Math.pow(x - e.clientX, 2) + Math.pow(y - e.clientY, 2));
-                if (d < 10) {
-                    console.log(`Snapping to ${star.name} @ ${x}, ${y}`);
-                    zoomPoint = new Point(x, y);
-                    break;
-                }
+            // for (const planet of star.planets) {
+            //     const period = Math.floor(600000 * planet.year);
+            //     const phi = planet.phi + ((Date.now() % period) / period) * 2 * Math.PI;
+            //     x += Math.round(planet.r / this._mapScale) * Math.cos(phi);
+            //     y += Math.round(planet.r / this._mapScale) * Math.sin(phi);
+            //     d = Math.sqrt(Math.pow(x - e.clientX, 2) + Math.pow(y - e.clientY, 2));
+            //     if (d < 10) {
+            //         zoomPoint.x = star.sx * this._sectorSize + star.x + planet.r * Math.cos(phi);
+            //         zoomPoint.y = star.sy * this._sectorSize + star.y + planet.r * Math.sin(phi);
+            //         break;
+            //     }
+            // }
+        }
 
-                // for (const planet of star.planets) {
-                //     const period = Math.floor(600000 * planet.year);
-                //     const phi = planet.phi + ((Date.now() % period) / period) * 2 * Math.PI;
-                //     x += Math.round(planet.r / this._mapScale) * Math.cos(phi);
-                //     y += Math.round(planet.r / this._mapScale) * Math.sin(phi);
-                //     d = Math.sqrt(Math.pow(x - e.clientX, 2) + Math.pow(y - e.clientY, 2));
-                //     if (d < 10) {
-                //         zoomPoint.x = star.sx * this._sectorSize + star.x + planet.r * Math.cos(phi);
-                //         zoomPoint.y = star.sy * this._sectorSize + star.y + planet.r * Math.sin(phi);
-                //         break;
-                //     }
-                // }
-            }
-            
-            this._mapScale = newScale;
-            this._mapOffset = new Point(
-                zoomPoint.x * (1 - newScale / oldScale) + this._mapOffset.x * (newScale / oldScale),
-                zoomPoint.y * (1 - newScale / oldScale) + this._mapOffset.y * (newScale / oldScale));
-        });
+        this._mapScale = newScale;
+        this._mapOffset = new Point(
+            zoomPoint.x * (1 - newScale / oldScale) + this._mapOffset.x * (newScale / oldScale),
+            zoomPoint.y * (1 - newScale / oldScale) + this._mapOffset.y * (newScale / oldScale));
     }
 
     private keyUp(e: KeyboardEvent): void {
