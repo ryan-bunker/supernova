@@ -6,7 +6,7 @@ namespace Supernova.Api.Data
     {
         public Guid Id { get; set; }
         public string Name { get; set; }
-        public float R { get; set; }
+        public long R { get; set; }
         public float Phi { get; set; }
         public float Year { get; set; }
         

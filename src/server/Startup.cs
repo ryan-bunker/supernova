@@ -16,17 +16,51 @@ namespace SupernovaApi
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
+            var adjectives = File.ReadAllLines("Data/adjectives.txt");
+            var nouns = File.ReadAllLines("Data/nouns.txt");
+            
+            services.AddSingleton(new GalaxyGenerator(
+                new Random(1234),
+                adjectives.ToImmutableList(),
+                nouns.ToImmutableList(),
+                30_860_000_000_000_000, 10));
+
+            services.AddCors();
+            
+            services
+                .AddDbContext<UniverseContext>()
+                .AddSingleton(mapperConfig.CreateMapper())
+                .AddDataLoaderRegistry()
+                .AddGraphQL(sp =>
+                        SchemaBuilder.New()
+                            .AddServices(sp)
+                            .AddQueryType(d => d.Name("Query"))
+                            .AddType<UniverseQueries>()
+                            .AddType<StarExtension>()
+                            .Create(),
+                    new QueryExecutionOptions {ForceSerialExecution = true});
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            using (var db = new UniverseContext())
+                db.Database.EnsureCreated();
+            
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
             }
+            
+            app.UseCors(o => o
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowAnyOrigin());
 
             app.UseRouting();
+
+            app.UseGraphQL()
+                .UsePlayground();
 
             app.UseEndpoints(endpoints =>
             {
