@@ -1,12 +1,16 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.Collections.Immutable;
+using System.IO;
+using HotChocolate;
+using HotChocolate.AspNetCore;
+using HotChocolate.Execution.Configuration;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Supernova.Api.Data;
+using Supernova.Api.Graph;
 
 namespace SupernovaApi
 {
@@ -29,7 +33,6 @@ namespace SupernovaApi
             
             services
                 .AddDbContext<UniverseContext>()
-                .AddSingleton(mapperConfig.CreateMapper())
                 .AddDataLoaderRegistry()
                 .AddGraphQL(sp =>
                         SchemaBuilder.New()
