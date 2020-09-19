@@ -29,14 +29,14 @@ namespace Supernova.Api.Data
             var count = Math.Floor(_rand.NextDouble() * 2 * _starDensity * 0.1 + _starDensity * 0.9);
             for (int i = 0; i < count; i++)
             {
-                var star = GenerateStar(x, y);
+                var star = await GenerateStar(x, y, dbContext);
                 await dbContext.Stars.AddAsync(star);
             }
 
             await dbContext.SaveChangesAsync();
         }
 
-        public Star GenerateStar(long sectorX, long sectorY)
+        public async Task<Star> GenerateStar(long sectorX, long sectorY, UniverseContext dbContext)
         {
             var adj = _rand.Pick(_adjectives);
             var noun = _rand.Pick(_nouns);
@@ -77,6 +77,25 @@ namespace Supernova.Api.Data
                 };
                 currentR = p.R;
                 star.Planets.Add(p);
+
+                // gravity: Game.gravityRange.min + Math.round(100 * this._rand.next() * (Game.gravityRange.max - Game.gravityRange.min)) / 100,
+                // temperature: Game.temperatureRange.min + Math.floor(this._rand.next() * (Game.temperatureRange.max - Game.temperatureRange.min)),
+                // radiation: Game.radiationRange.min + Math.floor(this._rand.next() * (Game.radiationRange.max - Game.radiationRange.min)),
+                var pm = new PlanetMeta
+                {
+                    PlanetId = p.Id,
+                    Gravity = 0,
+                    Temperature = 0,
+                    Radiation = 0,
+                    Surface = new Minerals(),
+                    Concentration = new Minerals
+                    {
+                        Ironium = (float)_rand.NextDouble(),
+                        Boranium = (float)_rand.NextDouble(),
+                        Germanium = (float)_rand.NextDouble()
+                    }
+                };
+                await dbContext.PlanetMetas.AddAsync(pm);
             }
 
             return star;

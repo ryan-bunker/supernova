@@ -72,9 +72,49 @@ export class StarsClient {
     }
 
     async getPlanetMeta(starId: string, planetId: string): Promise<PlanetMeta | undefined> {
-        const meta = await this._client.getPlanetMeta(starId, planetId);
-        if (meta === undefined) return undefined;
-        return StarsClient.mapPlanetMeta(meta);
+        const result = await this._apiClient.query({
+            query: gql`
+                {
+                    planetMeta(where: { planetId: "${planetId}" }) {
+                        planetId
+                        gravity
+                        temperature
+                        radiation
+                        surface {
+                            ironium
+                            boranium
+                            germanium
+                        }
+                        concentration {
+                            ironium
+                            boranium
+                            germanium
+                        }
+                        factories
+                        mines
+                        population
+                    }
+                }`
+        });
+        const pm = result.data.planetMeta[0];
+        return {
+            gravity: pm.gravity,
+            temperature: pm.temperature,
+            radiation: pm.radiation,
+            surface: {
+                ironium: pm.surface.ironium,
+                boranium: pm.surface.boranium,
+                germanium: pm.surface.germanium
+            },
+            concentration: {
+                ironium: pm.concentration.ironium,
+                boranium: pm.concentration.boranium,
+                germanium: pm.concentration.germanium
+            },
+            factories: { count: pm.factories, max: 0 },
+            mines: { count: pm.mines, max: 0 },
+            population: pm.population
+        };
     }
 
     async getSectors(sxMin: number, syMin: number, sxMax?: number, syMax?: number): Promise<Star[]> {

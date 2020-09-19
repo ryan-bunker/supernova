@@ -32,5 +32,8 @@ namespace Supernova.Api.Graph
                 .Where(s =>
                 s.SectorX >= sxMin && s.SectorX <= sxMax && s.SectorY >= syMin && s.SectorY <= syMax);
         }
+
+        [UseSelection, UseFiltering]
+        public IQueryable<PlanetMeta> GetPlanetMeta([Service] UniverseContext dbContext) => dbContext.PlanetMetas;
     }
 }

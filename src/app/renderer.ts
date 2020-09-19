@@ -291,37 +291,36 @@ export class Renderer {
             return;
         }
 
-        // const clickMapPoint = new Point(
-        //     (e.clientX - this._mapOffset.x) * this._mapScale,
-        //     (e.clientY - this._mapOffset.y) * this._mapScale);
-        // const sx = Math.floor(clickMapPoint.x / this._sectorSize);
-        // const sy = Math.floor(clickMapPoint.y / this._sectorSize);
-        // this._sectorSource.getSectors(sx, sy).then(sectors => {
-        //     console.log(clickMapPoint);
-        //
-        //     for (const star of sectors) {
-        //         let x = star.sx * (this._sectorSize / this._mapScale) + (star.x / this._mapScale) + this._mapOffset.x;
-        //         let y = star.sy * (this._sectorSize / this._mapScale) + (star.y / this._mapScale) + this._mapOffset.y;
-        //         let d = Math.sqrt(Math.pow(x - e.clientX, 2) + Math.pow(y - e.clientY, 2));
-        //         if (d < 10) {
-        //             this.selectedItem = {type: 'Star', item: star};
-        //             return;
-        //         }
-        //
-        //         for (const planet of star.planets) {
-        //             const period = Math.floor(600000 * planet.year);
-        //             const phi = planet.phi + ((Date.now() % period) / period) * 2 * Math.PI;
-        //             let px = x + Math.round(planet.r / this._mapScale) * Math.cos(phi);
-        //             let py = y + Math.round(planet.r / this._mapScale) * Math.sin(phi);
-        //             d = Math.sqrt(Math.pow(px - e.clientX, 2) + Math.pow(py - e.clientY, 2));
-        //             if (d < 10) {
-        //                 this.selectedItem = {type: 'Planet', item: planet};
-        //                 return;
-        //             }
-        //         }
-        //     }
-        //     this.selectedItem = undefined;
-        // });
+        const clickPoint = new Point(e.clientX, e.clientY);
+        const zoomSect = this.screenToSector({x: e.clientX, y: e.clientY});
+        const stars = this._sectorSource.getSector(zoomSect.x, zoomSect.y);
+
+        for (const star of stars) {
+            const {x, y} = this.toScreen(star);
+            let d = Math.sqrt(Math.pow(x - e.clientX, 2) + Math.pow(y - e.clientY, 2));
+            console.log(`Checking ${star.name} - ${d}`);
+            if (d < 10) {
+                console.log("**SELECTED**");
+                this.selectedItem = {type: 'Star', item: star};
+                return;
+            }
+
+            for (const planet of star.planets) {
+                const period = Math.floor(600000 * planet.year);
+                const phi = planet.phi + ((Date.now() % period) / period) * 2 * Math.PI;
+                const orbitR = Number(planet.r * this._mapScale);
+                const px = x + orbitR * Math.cos(phi);
+                const py = y + orbitR * Math.sin(phi);
+                d = Math.sqrt(Math.pow(px - e.clientX, 2) + Math.pow(py - e.clientY, 2));
+                console.log(`Checking ${planet.name} - ${d}`);
+                if (d < 10) {
+                    console.log("**SELECTED**");
+                    this.selectedItem = {type: 'Planet', item: planet};
+                    return;
+                }
+            }
+        }
+        this.selectedItem = undefined;
     }
 
     private mouseMove(e: MouseEvent): void {

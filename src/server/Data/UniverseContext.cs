@@ -6,6 +6,7 @@ namespace Supernova.Api.Data
     {
         public DbSet<Star> Stars { get; set; }
         public DbSet<Planet> Planets { get; set; }
+        public DbSet<PlanetMeta> PlanetMetas { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder options) =>
             options.UseSqlite("Data Source=universe.db");
@@ -19,6 +20,18 @@ namespace Supernova.Api.Data
 
             modelBuilder.Entity<Star>()
                 .HasIndex(t => new {t.SectorX, t.SectorY});
+
+            modelBuilder.Entity<Planet>()
+                .HasOne<PlanetMeta>()
+                .WithOne()
+                .HasForeignKey<PlanetMeta>(t => t.PlanetId);
+
+            modelBuilder.Entity<PlanetMeta>()
+                .HasKey(t => t.PlanetId);
+            modelBuilder.Entity<PlanetMeta>()
+                .OwnsOne(t => t.Surface);
+            modelBuilder.Entity<PlanetMeta>()
+                .OwnsOne(t => t.Concentration);
         }
     }
 }
