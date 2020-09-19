@@ -12,7 +12,7 @@ using Microsoft.Extensions.Hosting;
 using Supernova.Api.Data;
 using Supernova.Api.Graph;
 
-namespace SupernovaApi
+namespace Supernova.Api
 {
     public class Startup
     {
@@ -33,13 +33,9 @@ namespace SupernovaApi
             
             services
                 .AddDbContext<UniverseContext>()
-                .AddDataLoaderRegistry()
-                .AddGraphQL(sp =>
+                .AddGraphQL(
                         SchemaBuilder.New()
-                            .AddServices(sp)
-                            .AddQueryType(d => d.Name("Query"))
-                            .AddType<UniverseQueries>()
-                            .AddType<StarExtension>()
+                            .AddQueryType<Query>()
                             .Create(),
                     new QueryExecutionOptions {ForceSerialExecution = true});
         }

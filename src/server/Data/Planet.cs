@@ -2,7 +2,7 @@ using System;
 
 namespace Supernova.Api.Data
 {
-    public sealed class Planet
+    public class Planet
     {
         public Guid Id { get; set; }
         public string Name { get; set; }
@@ -11,6 +11,6 @@ namespace Supernova.Api.Data
         public float Year { get; set; }
         
         public Guid StarId { get; set; }
-        public Star Star { get; set; }
+        public virtual Star Star { get; set; }
     }
 }

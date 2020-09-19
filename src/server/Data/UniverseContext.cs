@@ -9,5 +9,16 @@ namespace Supernova.Api.Data
 
         protected override void OnConfiguring(DbContextOptionsBuilder options) =>
             options.UseSqlite("Data Source=universe.db");
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Star>()
+                .HasMany(t => t.Planets)
+                .WithOne(t => t.Star)
+                .HasForeignKey(t => t.StarId);
+
+            modelBuilder.Entity<Star>()
+                .HasIndex(t => new {t.SectorX, t.SectorY});
+        }
     }
 }

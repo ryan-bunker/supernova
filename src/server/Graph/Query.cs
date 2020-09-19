@@ -8,12 +8,13 @@ using Supernova.Api.Data;
 
 namespace Supernova.Api.Graph
 {
-    [ExtendObjectType(Name = "Query")]
-    public class UniverseQueries
+    public class Query
     {
+        [UseSelection]
         public IQueryable<Star> GetStars([Service] UniverseContext dbContext) => dbContext.Stars;
 
-        public async Task<IQueryable<Star>> GetSectors(long sxMin, long syMin, long sxMax, long syMax,
+        [UseSelection]
+        public async Task<IQueryable<Star>> GetSectorsAsync(long sxMin, long syMin, long sxMax, long syMax,
             [Service] UniverseContext dbContext, [Service] GalaxyGenerator generator)
         {
             var existingSectors = (
@@ -27,7 +28,8 @@ namespace Supernova.Api.Graph
                     if (!existingSectors.Contains(new {SectorX = sx, SectorY = sy}))
                         await generator.GenerateSector(sx, sy, dbContext);
                     
-            return dbContext.Stars.Where(s =>
+            return dbContext.Stars
+                .Where(s =>
                 s.SectorX >= sxMin && s.SectorX <= sxMax && s.SectorY >= syMin && s.SectorY <= syMax);
         }
     }

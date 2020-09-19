@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using SupernovaApi;
@@ -47,6 +48,7 @@ namespace Supernova.Api.Data
                 Y = _rand.NextLong(_sectorSize),
                 SectorX = sectorX,
                 SectorY = sectorY,
+                Planets = new List<Planet>()
             };
 
             var planetCount = _rand.Next(11);

@@ -14,8 +14,7 @@ namespace Supernova.Api.Data
         public long Y { get; set; }
         public long SectorX { get; set; }
         public long SectorY { get; set; }
-        
-        [GraphQLIgnore]
-        public List<Planet> Planets { get; } = new List<Planet>();
+
+        public virtual ICollection<Planet> Planets { get; set; }
     }
 }
