@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
+using Supernova.Api.Configuration;
 using SupernovaApi;
 
 namespace Supernova.Api.Data
@@ -11,22 +12,20 @@ namespace Supernova.Api.Data
         private readonly Random _rand;
         private readonly ImmutableList<string> _adjectives;
         private readonly ImmutableList<string> _nouns;
-        private readonly long _sectorSize;
-        private readonly double _starDensity;
+        private readonly GameConfiguration _gameConfiguration;
 
-        public GalaxyGenerator(Random rand, ImmutableList<string> adjectives, ImmutableList<string> nouns, long sectorSize, double starDensity)
+        public GalaxyGenerator(Random rand, ImmutableList<string> adjectives, ImmutableList<string> nouns, GameConfiguration gameConfig)
         {
             _rand = rand;
             _adjectives = adjectives;
             _nouns = nouns;
-            _sectorSize = sectorSize;
-            _starDensity = starDensity;
+            _gameConfiguration = gameConfig;
         }
 
         public async Task GenerateSector(long x, long y, UniverseContext dbContext)
         {
             // each sector has +/-10% of _starDensity
-            var count = Math.Floor(_rand.NextDouble() * 2 * _starDensity * 0.1 + _starDensity * 0.9);
+            var count = Math.Floor(_rand.NextDouble() * 2 * _gameConfiguration.StarDensity * 0.1 + _gameConfiguration.StarDensity * 0.9);
             for (int i = 0; i < count; i++)
             {
                 var star = await GenerateStar(x, y, dbContext);
@@ -44,8 +43,8 @@ namespace Supernova.Api.Data
             {
                 Id = Guid.NewGuid(),
                 Name = $"{adj} {noun}",
-                X = _rand.NextLong(_sectorSize),
-                Y = _rand.NextLong(_sectorSize),
+                X = _rand.NextLong(_gameConfiguration.SectorSize),
+                Y = _rand.NextLong(_gameConfiguration.SectorSize),
                 SectorX = sectorX,
                 SectorY = sectorY,
                 Planets = new List<Planet>()
@@ -78,15 +77,12 @@ namespace Supernova.Api.Data
                 currentR = p.R;
                 star.Planets.Add(p);
 
-                // gravity: Game.gravityRange.min + Math.round(100 * this._rand.next() * (Game.gravityRange.max - Game.gravityRange.min)) / 100,
-                // temperature: Game.temperatureRange.min + Math.floor(this._rand.next() * (Game.temperatureRange.max - Game.temperatureRange.min)),
-                // radiation: Game.radiationRange.min + Math.floor(this._rand.next() * (Game.radiationRange.max - Game.radiationRange.min)),
                 var pm = new PlanetMeta
                 {
                     PlanetId = p.Id,
-                    Gravity = 0,
-                    Temperature = 0,
-                    Radiation = 0,
+                    Gravity = _rand.NextFloat(_gameConfiguration.GravityMin, _gameConfiguration.GravityMax, _gameConfiguration.GravityPrecision),
+                    Temperature = _rand.NextFloat(_gameConfiguration.TemperatureMin, _gameConfiguration.TemperatureMax, _gameConfiguration.TemperaturePrecision),
+                    Radiation = _rand.NextFloat(_gameConfiguration.RadiationMin, _gameConfiguration.RadiationMax, _gameConfiguration.RadiationPrecision),
                     Surface = new Minerals(),
                     Concentration = new Minerals
                     {

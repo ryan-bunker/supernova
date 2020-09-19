@@ -52,5 +52,15 @@ namespace Supernova.Api
         {
             return random.NextLong(long.MinValue, long.MaxValue);
         }
+
+        public static float NextFloat(this Random random, float min, float max, int precision)
+        {
+            var scale = (float)Math.Pow(10, precision);
+            var minScaled = (int) (min * scale);
+            var maxScaled = (int) (max * scale);
+            var val = random.Next(minScaled, maxScaled);
+
+            return val / scale;
+        }
     }
 }
