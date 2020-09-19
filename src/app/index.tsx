@@ -24,7 +24,15 @@ const httpLink = createHttpLink({
 
 const client = new ApolloClient({
     link: httpLink,
-    cache: new InMemoryCache()
+    cache: new InMemoryCache(),
+    defaultOptions: {
+        watchQuery: {
+            fetchPolicy: "no-cache"
+        },
+        query: {
+            fetchPolicy: "no-cache"
+        }
+    }
 });
 
 let domContainer = document.querySelector('#app-root');
