@@ -1,7 +1,6 @@
 import { Star, Planet, StarsClient, PlanetMeta } from "./stars";
 import { Point } from "../2d";
 import * as _ from "lodash";
-import { wrap, Remote } from "comlink";
 import {ApolloClient, gql} from "apollo-boost";
 
 export interface Ship {
@@ -12,18 +11,14 @@ export class PlanetWithMeta extends Planet {
     meta: PlanetMeta;
 }
 
-type ServerWorkerAPI = Remote<import("../server/worker").ServerWorker>;
-
 export class PlayerClient {
     private readonly _playerId: number;
     private readonly _starClient: StarsClient;
-    private readonly _serverClient: Remote<ServerWorkerAPI>;
     private readonly _apiClient: ApolloClient<any>;
 
     constructor(playerId: number, starClient: StarsClient, worker: Worker, client: ApolloClient<any>) {
         this._playerId = playerId;
         this._starClient = starClient;
-        this._serverClient = wrap<ServerWorkerAPI>(worker);
         this._apiClient = client;
     }
 

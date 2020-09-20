@@ -1,6 +1,4 @@
 import * as _ from "lodash";
-import { GetStarResponse,  GetPlanetMetaResponse } from "../worker/messaging";
-import { wrap, Remote } from "comlink";
 import {ApolloClient, gql} from "apollo-boost";
 
 export type MineralType = "ironium" | "boranium" | "germanium";
@@ -48,14 +46,10 @@ export class Star {
     planets: Planet[];
 }
 
-type ServerWorkerAPI = Remote<import("../server/worker").ServerWorker>;
-
 export class StarsClient {
-    private readonly _client: Remote<ServerWorkerAPI>;
     private readonly _apiClient: ApolloClient<any>;
 
-    constructor(worker: Worker, client: ApolloClient<any>) {
-        this._client = wrap<ServerWorkerAPI>(worker);
+    constructor(client: ApolloClient<any>) {
         this._apiClient = client;
     }
 
@@ -228,39 +222,5 @@ export class StarsClient {
                     star: sector
                 }))
         }));
-    }
-
-    private static mapStar(dbStar: GetStarResponse): Star {
-        const s = new Star();
-        s.id = dbStar.id;
-        s.name = dbStar.name;
-        s.x = dbStar.x;
-        s.y = dbStar.y;
-        s.sx = dbStar.sx;
-        s.sy = dbStar.sy;
-        s.planets = _.map(dbStar.planets, dbPlanet => {
-            const p = new Planet();
-            p.id = dbPlanet.id;
-            p.star = s;
-            p.name = dbPlanet.name;
-            p.r = dbPlanet.r;
-            p.phi = dbPlanet.phi;
-            p.year = dbPlanet.year;
-            return p;
-        });
-        return s;
-    }
-
-    private static mapPlanetMeta(meta: GetPlanetMetaResponse): PlanetMeta {
-        return {
-            gravity: meta.gravity,
-            temperature: meta.temperature,
-            radiation: meta.radiation,
-            surface: meta.surface,
-            concentration: meta.concentration,
-            factories: meta.factories,
-            mines: meta.mines,
-            population: meta.population
-        };
     }
 }
