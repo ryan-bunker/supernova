@@ -140,6 +140,7 @@ export class Renderer {
 
             for (let sx = tlSect.x; sx <= brSect.x; sx++) {
                 const {x} = this.toScreen({sx, x: 0, sy: 0, y: 0});
+                ctx.beginPath();
                 ctx.moveTo(x, 0);
                 ctx.lineTo(x, this._canvas.height);
                 ctx.stroke();
@@ -148,6 +149,7 @@ export class Renderer {
                     const {y} = this.toScreen({sx: 0, x: 0, sy, y: 0});
                     ctx.fillText(`${sx}:${sy}`, x + 4, y + 20);
                     if (sx == tlSect.x) {
+                        ctx.beginPath();
                         ctx.moveTo(0, y);
                         ctx.lineTo(this._canvas.width, y);
                         ctx.stroke();
