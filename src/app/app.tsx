@@ -154,19 +154,19 @@ const App = withStyles(styles)(
 
             return (
                 <>
-                    {/*<div className={classes.footer}>*/}
-                    {/*    <Grid container spacing={3} style={{ height: 'calc(100% + 24px)' }}>*/}
-                    {/*        <Grid item xs style={{ height: '100%' }}>*/}
-                    {/*            <MessageList messages={this.state.messages} />*/}
-                    {/*        </Grid>*/}
-                    {/*        <Grid item xs style={{ height: '100%' }}>*/}
-                    {/*            {selectedSummary}*/}
-                    {/*        </Grid>*/}
-                    {/*    </Grid>*/}
-                    {/*</div>*/}
-                    {/*<div className={classes.sidebar}>*/}
-                    {/*    <Sidebar planets={this.state.planets} />*/}
-                    {/*</div>*/}
+                    <div className={classes.footer}>
+                        <Grid container spacing={3} style={{ height: 'calc(100% + 24px)' }}>
+                            <Grid item xs style={{ height: '100%' }}>
+                                <MessageList messages={this.state.messages} />
+                            </Grid>
+                            <Grid item xs style={{ height: '100%' }}>
+                                {selectedSummary}
+                            </Grid>
+                        </Grid>
+                    </div>
+                    <div className={classes.sidebar}>
+                        <Sidebar planets={this.state.planets} />
+                    </div>
                 </>
             );
         }
