@@ -7,6 +7,7 @@ using HotChocolate.Execution.Configuration;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -22,9 +23,9 @@ namespace Supernova.Api
         {
             Configuration = configuration;
         }
-        
+
         public IConfiguration Configuration { get; }
-        
+
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
@@ -32,10 +33,10 @@ namespace Supernova.Api
             var gameConfig = new GameConfiguration();
             Configuration.Bind("Game", gameConfig);
             services.AddSingleton(gameConfig);
-            
+
             var adjectives = File.ReadAllLines("Data/adjectives.txt");
             var nouns = File.ReadAllLines("Data/nouns.txt");
-            
+
             services.AddSingleton(new GalaxyGenerator(
                 new Random(1234),
                 adjectives.ToImmutableList(),
@@ -43,29 +44,29 @@ namespace Supernova.Api
                 gameConfig));
 
             services.AddCors();
-            
+
             services
-                .AddDbContext<UniverseContext>()
+                .AddDbContext<UniverseContext>(
+                    options => options.UseSqlite(Configuration["ConnectionStrings:Sqlite"]))
                 .AddGraphQL(
-                        SchemaBuilder.New()
-                            .AddQueryType<Query>()
-                            .Create(),
+                    SchemaBuilder.New()
+                        .AddQueryType<Query>()
+                        .Create(),
                     new QueryExecutionOptions {ForceSerialExecution = true});
 
             services.AddSpaStaticFiles(configuration => { configuration.RootPath = "ClientApp/dist"; });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, UniverseContext db)
         {
-            using (var db = new UniverseContext())
-                db.Database.EnsureCreated();
-            
+            db.Database.EnsureCreated();
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
             }
-            
+
             app.UseCors(o => o
                 .AllowAnyHeader()
                 .AllowAnyMethod()

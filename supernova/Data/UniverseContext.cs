@@ -4,13 +4,14 @@ namespace Supernova.Api.Data
 {
     public class UniverseContext : DbContext
     {
+        public UniverseContext(DbContextOptions<UniverseContext> options) : base(options)
+        {
+        }
+
         public DbSet<Star> Stars { get; set; }
         public DbSet<Planet> Planets { get; set; }
         public DbSet<PlanetMeta> PlanetMetas { get; set; }
         public DbSet<Ship> Ships { get; set; }
-
-        protected override void OnConfiguring(DbContextOptionsBuilder options) =>
-            options.UseSqlite("Data Source=universe.db");
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -29,7 +30,7 @@ namespace Supernova.Api.Data
 
             modelBuilder.Entity<PlanetMeta>()
                 .HasKey(t => t.PlanetId);
-                
+
             modelBuilder.Entity<PlanetMeta>()
                 .OwnsOne(t => t.Surface);
             modelBuilder.Entity<PlanetMeta>()
