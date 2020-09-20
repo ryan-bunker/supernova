@@ -91,7 +91,7 @@ const App = withStyles(styles)(
                 planets: []
             };
 
-            this._starClient = new StarsClient(props.serverWorker, props.graphClient);
+            this._starClient = new StarsClient(props.graphClient);
             this._playerClient = new PlayerClient(1, this._starClient, props.serverWorker, props.graphClient);
             const sectorCache = new SectorCache(this._starClient);
             
