@@ -51,6 +51,8 @@ namespace Supernova.Api
                             .AddQueryType<Query>()
                             .Create(),
                     new QueryExecutionOptions {ForceSerialExecution = true});
+
+            services.AddSpaStaticFiles(configuration => { configuration.RootPath = "ClientApp/dist"; });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -69,18 +71,15 @@ namespace Supernova.Api
                 .AllowAnyMethod()
                 .AllowAnyOrigin());
 
+            app.UseStaticFiles();
+            app.UseSpaStaticFiles();
+
             app.UseRouting();
 
             app.UseGraphQL()
                 .UsePlayground();
 
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapGet("/", async context =>
-                {
-                    await context.Response.WriteAsync("Hello World!");
-                });
-            });
+            app.UseSpa(spa => { spa.Options.SourcePath = "ClientApp"; });
         }
     }
 }
