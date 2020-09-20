@@ -5,6 +5,7 @@ namespace Supernova.Api.Data
     public class PlanetMeta
     {
         public Guid PlanetId { get; set; }
+        public long? OwnerId { get; set; }
         public float Gravity { get; set; }
         public float Temperature { get; set; }
         public float Radiation { get; set; }

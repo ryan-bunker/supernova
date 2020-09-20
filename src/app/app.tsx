@@ -5,7 +5,7 @@ import { Renderer } from './renderer';
 import './style.css';
 import { Point } from './2d';
 import { StarsClient, Planet, PlanetMeta, Star } from './client/stars';
-import { PlayerClient, PlanetWithMeta } from './client/player';
+import { PlayerClient, PlanetWithMeta, Ship } from './client/player';
 import MessageList from './message_list';
 import PlanetSummary from './planet_summary';
 import Game from './server/game';
@@ -92,16 +92,32 @@ const App = withStyles(styles)(
             };
 
             this._starClient = new StarsClient(props.serverWorker, props.graphClient);
-            this._playerClient = new PlayerClient(this._starClient, props.serverWorker);
+            this._playerClient = new PlayerClient(1, this._starClient, props.serverWorker, props.graphClient);
             const sectorCache = new SectorCache(this._starClient);
+            
+            let playerHomeworld: Planet|undefined = undefined;
+            const getHomeworld = (): Readonly<Planet> => {
+                return playerHomeworld!;
+            }
+            
+            let playerShips: Readonly<Ship[]>|undefined = undefined;
+            const getShips = (): Readonly<Ship[]> => {
+                if (playerShips) {
+                    return playerShips;
+                }
+                this._playerClient.getShips().then(ships => {
+                    playerShips = ships;
+                });
+                return [];
+            }
 
-            this._renderer = new Renderer(canvas, SECTOR_SIZE, sectorCache, this._playerClient, item => {
+            this._renderer = new Renderer(canvas, SECTOR_SIZE, sectorCache, { getHomeworld, getShips }, item => {
                 console.log(item);
 
                 if (item === undefined) {
                     this.setState({ planet: undefined, planetMeta: undefined });
                 } else if (item.type == 'Planet') {
-                    this._starClient.getPlanetMeta(item.item.star.id, item.item.id).then(
+                    this._starClient.getPlanetMeta(item.item.id).then(
                         meta => this.setState({ planet: item.item, planetMeta: meta }));
                 } else {
                     this.setState({ planet: undefined, planetMeta: undefined });
@@ -109,17 +125,17 @@ const App = withStyles(styles)(
             });
 
             // this._renderer.transform.scale = 5;
-            // this._playerClient.getHomeworld().then(
-            //     homeworld => {
-            //         this._renderer.selectedItem = { type: "Planet", item: homeworld };
-            //         const { x, y } = this._renderer.transform.transform(new Point(homeworld.star.x, homeworld.star.y));
-            //         this._renderer.transform.translateTo(-x + canvas.width / 2, -y + canvas.height / 3);
-            //
-            //         this._renderer.render();
-            //     });
-            //
-            // this._playerClient.getPlanets().then(planets => this.setState({ planets }))
-            this._renderer.render();
+            this._playerClient.getHomeworld().then(
+                homeworld => {
+                    playerHomeworld = homeworld;
+                    this._renderer.selectedItem = { type: "Planet", item: homeworld };
+                    //const { x, y } = this._renderer.transform.transform(new Point(homeworld.star.x, homeworld.star.y));
+                    //this._renderer.transform.translateTo(-x + canvas.width / 2, -y + canvas.height / 3);
+
+                    this._renderer.render();
+                });
+
+            this._playerClient.getPlanets().then(planets => this.setState({ planets }))
         }
 
         render() {

@@ -60,18 +60,88 @@ export class StarsClient {
     }
 
     async getStar(id: string): Promise<Star | undefined> {
-        const resp = await this._client.getStar(id);
-        if (resp === undefined) return undefined;
-        return StarsClient.mapStar(resp);
+        const result = await this._apiClient.query({
+            query: gql`
+                {
+                    stars(where: { id: "${id}" }) {
+                        id
+                        name
+                        sectorX
+                        sectorY
+                        x
+                        y
+                        planets {
+                            id
+                            name
+                            phi
+                            r
+                            year
+                        }
+                    }
+                }`
+        });
+        if (result.data.stars.length == 0)
+            return undefined;
+        const s = result.data.stars[0];
+        return Object.assign(new Star(), {
+            id: s.id,
+            name: s.name,
+            x: s.x,
+            y: s.y,
+            sx: s.sectorX,
+            sy: s.sectorY,
+            planets: _.map<any, Planet>(s.planets, (planet: any): Planet =>
+                Object.assign(new Planet(), {
+                    id: planet.id,
+                    name: planet.name,
+                    phi: planet.phi,
+                    r: planet.r,
+                    year: planet.year,
+                    star: s
+                }))
+        });
     }
 
-    async getPlanet(starId: string, planetId: string): Promise<Planet | undefined> {
-        const s = await this.getStar(starId);
-        if (s === undefined) return undefined;
-        return _.head(_.filter(s.planets, p => p.id == planetId));
+    async getPlanet(planetId: string): Promise<Planet | undefined> {
+        const result = await this._apiClient.query({
+            query: gql`
+                {
+                    planet(where: { id: "${planetId}" }) {
+                        id
+                        name
+                        phi
+                        r
+                        year
+                        star {
+                            id
+                            name
+                            sectorX
+                            sectorY
+                            x
+                            y
+                        }
+                    }
+                }`
+        });
+        const p = result.data.planet[0];
+        return Object.assign(new Planet(), {
+            id: p.id,
+            name: p.name,
+            r: p.r,
+            phi: p.phi,
+            year: p.year,
+            star: Object.assign(new Star(), {
+                id: p.star.id,
+                name: p.star.name,
+                sx: p.star.sectorX,
+                sy: p.star.sectorY,
+                x: p.star.x,
+                y: p.star.y
+            })
+        });
     }
 
-    async getPlanetMeta(starId: string, planetId: string): Promise<PlanetMeta | undefined> {
+    async getPlanetMeta(planetId: string): Promise<PlanetMeta | undefined> {
         const result = await this._apiClient.query({
             query: gql`
                 {

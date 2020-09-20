@@ -2,6 +2,7 @@ import { Star, Planet, StarsClient, PlanetMeta } from "./stars";
 import { Point } from "../2d";
 import * as _ from "lodash";
 import { wrap, Remote } from "comlink";
+import {ApolloClient, gql} from "apollo-boost";
 
 export interface Ship {
     loc: Star | Planet | Point
@@ -14,46 +15,99 @@ export class PlanetWithMeta extends Planet {
 type ServerWorkerAPI = Remote<import("../server/worker").ServerWorker>;
 
 export class PlayerClient {
+    private readonly _playerId: number;
     private readonly _starClient: StarsClient;
     private readonly _serverClient: Remote<ServerWorkerAPI>;
+    private readonly _apiClient: ApolloClient<any>;
 
-    constructor(starClient: StarsClient, worker: Worker) {
+    constructor(playerId: number, starClient: StarsClient, worker: Worker, client: ApolloClient<any>) {
+        this._playerId = playerId;
         this._starClient = starClient;
         this._serverClient = wrap<ServerWorkerAPI>(worker);
+        this._apiClient = client;
     }
 
     async getHomeworld(): Promise<Planet> {
-        const serverHw = await this._serverClient.getHomeworld();
-        const hw = await this._starClient.getPlanet(serverHw.starId, serverHw.id);
-        if (hw === undefined) {
-            throw `Player homeworld is undefined (starId: ${serverHw.starId}, planetId: ${serverHw.id})`;
-        }
-        return hw;
+        return (await this.getPlanets())[0];
     }
 
     async getPlanets(): Promise<Readonly<PlanetWithMeta[]>> {
-        return await Promise.all(_.map(await this._serverClient.getPlanets(), async dbPlanet => {
-            const p = await this._starClient.getPlanet(dbPlanet.starId, dbPlanet.id);
-            const meta = await this._starClient.getPlanetMeta(dbPlanet.starId, dbPlanet.id);
+        const result = await this._apiClient.query({
+            query: gql`
+                {
+                    planetMeta(where: { ownerId: ${this._playerId} }) {
+                        planetId
+                        gravity
+                        temperature
+                        radiation
+                        surface {
+                            ironium
+                            boranium
+                            germanium
+                        }
+                        concentration {
+                            ironium
+                            boranium
+                            germanium
+                        }
+                        factories
+                        mines
+                        population
+                    }
+                }`
+        });
+        
+        const planets = result.data.planetMeta;
+        return await Promise.all(_.map(planets, async pm => {
+            const p = await this._starClient.getPlanet(pm.planetId);
             const pwm = Object.assign(new PlanetWithMeta(), p!);
-            pwm.meta = meta!;
+            pwm.meta = {
+                gravity: pm.gravity,
+                temperature: pm.temperature,
+                radiation: pm.radiation,
+                surface: {
+                    ironium: pm.surface.ironium,
+                    boranium: pm.surface.boranium,
+                    germanium: pm.surface.germanium
+                },
+                concentration: {
+                    ironium: pm.concentration.ironium,
+                    boranium: pm.concentration.boranium,
+                    germanium: pm.concentration.germanium
+                },
+                factories: { count: pm.factories, max: 0 },
+                mines: { count: pm.mines, max: 0 },
+                population: pm.population
+            };
             return pwm;
-        }));
+        }))
     }
 
     async getShips(): Promise<Readonly<Ship[]>> {
-        return Promise.all(_.map(await this._serverClient.getShips(), async dbShip => {
+        const result = await this._apiClient.query({
+            query: gql`
+                {
+                    ships(where: { playerId: 1 }) {
+                        id
+                        playerId
+                        locationStar
+                        locationPlanet
+                        locationPoint {
+                            x y
+                            sectorX sectorY
+                        }
+                    }
+                }`
+        });
+        
+        return Promise.all(_.map(result.data.ships, async dbShip => {
             let loc: Star | Planet | Point | undefined;
-            switch (dbShip.loc.type) {
-                case 'Star':
-                    loc = await this._starClient.getStar(dbShip.loc.id);
-                    break;
-                case 'Planet':
-                    loc = await this._starClient.getPlanet(dbShip.loc.starId, dbShip.loc.id);
-                    break;
-                case 'Point':
-                    loc = new Point(dbShip.loc.x, dbShip.loc.y);
-                    break;
+            if (dbShip.locationStar) {
+                loc = await this._starClient.getStar(dbShip.locationStar);
+            } else if (dbShip.locationPlanet) {
+                loc = await this._starClient.getPlanet(dbShip.locationPlanet);
+            } else if (dbShip.locationPoint) {
+                loc = new Point(dbShip.locationPoint.x, dbShip.locationPoint.y);
             }
             if (loc === undefined) {
                 throw 'location undefined';

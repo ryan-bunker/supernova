@@ -7,9 +7,9 @@ interface SectorSource {
 }
 
 interface PlayerData {
-    getHomeworld(): Promise<Readonly<Planet>>;
+    getHomeworld(): Readonly<Planet>;
 
-    getShips(): Promise<Readonly<Ship[]>>;
+    getShips(): Readonly<Ship[]>;
 }
 
 export interface SelectedPlanet {
@@ -224,41 +224,51 @@ export class Renderer {
                     }
                 }
 
-                // if (alpha > 0) {
-                //     ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-                //     for (const ship of ships) {
-                //         if (ship.loc instanceof Planet || ship.loc instanceof Star) {
-                //             // ship is in orbit, so draw that
-                //             const orbitR = ship.loc instanceof Planet ? 5 : 10;
-                //             // draw orbit first
-                //             const tLoc = this._mapToScreen.transform(ship.loc);
-                //             ctx.beginPath();
-                //             ctx.arc(tLoc.x, tLoc.y, orbitR * this._mapToScreen.scale, 0, 2 * Math.PI);
-                //             ctx.stroke();
-                //             // now draw ship
-                //             const phi = ((Date.now() % 10000) / 10000) * 2 * Math.PI;
-                //             const shipPt = new Point(
-                //                 ship.loc.x + orbitR * Math.cos(phi),
-                //                 ship.loc.y + orbitR * Math.sin(phi));
-                //             const tPlanetPt = this._mapToScreen.transform(shipPt);
-                //             ctx.save();
-                //             ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-                //             ctx.translate(tPlanetPt.x, tPlanetPt.y);
-                //             ctx.scale(0.01 * this._mapToScreen.scale, -0.01 * this._mapToScreen.scale);
-                //             ctx.rotate(-phi);
-                //             ctx.fill(ShipPath);
-                //             ctx.restore();
-                //         } else {
-                //             const tLoc = this._mapToScreen.transform(ship.loc);
-                //             ctx.save();
-                //             ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-                //             ctx.translate(tLoc.x, tLoc.y);
-                //             ctx.scale(0.01 * this._mapToScreen.scale, -0.01 * this._mapToScreen.scale);
-                //             ctx.fill(ShipPath);
-                //             ctx.restore();
-                //         }
-                //     }
-                // }
+                if (planetAlpha > 0) {
+                    ctx.fillStyle = `rgba(255, 255, 255, ${planetAlpha})`;
+                    ctx.strokeStyle = `rgba(128, 128, 128, ${planetAlpha})`;
+                    for (const ship of this._playerData.getShips()) {
+                        if (ship.loc instanceof Planet || ship.loc instanceof Star) {
+                            // ship is in orbit, so draw that
+                            let tLoc: Point;
+                            const orbitR = 4 * 42_164_000_000 * this._mapScale;
+                            if (ship.loc instanceof Star) {
+                                tLoc = this.toScreen(ship.loc);
+                            } else {
+                                const starLoc = this.toScreen(ship.loc.star);
+                                const period = Math.floor(600000 * ship.loc.year);
+                                const phi = ship.loc.phi + ((Date.now() % period) / period) * 2 * Math.PI;
+                                tLoc = new Point(
+                                    starLoc.x + ship.loc.r * this._mapScale * Math.cos(phi),
+                                    starLoc.y + ship.loc.r * this._mapScale * Math.sin(phi));
+                            }
+                            // draw orbit first
+                            ctx.beginPath();
+                            ctx.arc(tLoc.x, tLoc.y, orbitR, 0, 2 * Math.PI);
+                            ctx.stroke();
+                            // now draw ship
+                            const phi = ((Date.now() % 10000) / 10000) * 2 * Math.PI;
+                            const shipPt = new Point(
+                                tLoc.x + orbitR * Math.cos(phi),
+                                tLoc.y + orbitR * Math.sin(phi));
+                            ctx.save();
+                            ctx.fillStyle = `rgba(255, 255, 255, ${planetAlpha})`;
+                            ctx.translate(shipPt.x, shipPt.y);
+                            ctx.scale(Math.min(0.2, 1e9 * this._mapScale), Math.max(-0.2, -1e9 * this._mapScale));
+                            ctx.rotate(-phi);
+                            ctx.fill(ShipPath);
+                            ctx.restore();
+                        } else {
+                            // const tLoc = this._mapToScreen.transform(ship.loc);
+                            // ctx.save();
+                            // ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                            // ctx.translate(tLoc.x, tLoc.y);
+                            // ctx.scale(0.01 * this._mapToScreen.scale, -0.01 * this._mapToScreen.scale);
+                            // ctx.fill(ShipPath);
+                            // ctx.restore();
+                        }
+                    }
+                }
             }
         }
 

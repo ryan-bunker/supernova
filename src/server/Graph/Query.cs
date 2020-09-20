@@ -10,7 +10,7 @@ namespace Supernova.Api.Graph
 {
     public class Query
     {
-        [UseSelection]
+        [UseSelection, UseFiltering]
         public IQueryable<Star> GetStars([Service] UniverseContext dbContext) => dbContext.Stars;
 
         [UseSelection]
@@ -32,8 +32,14 @@ namespace Supernova.Api.Graph
                 .Where(s =>
                 s.SectorX >= sxMin && s.SectorX <= sxMax && s.SectorY >= syMin && s.SectorY <= syMax);
         }
+        
+        [UseSelection, UseFiltering]
+        public IQueryable<Planet> GetPlanet([Service] UniverseContext dbContext) => dbContext.Planets;
 
         [UseSelection, UseFiltering]
         public IQueryable<PlanetMeta> GetPlanetMeta([Service] UniverseContext dbContext) => dbContext.PlanetMetas;
+
+        [UseSelection, UseFiltering]
+        public IQueryable<Ship> GetShips([Service] UniverseContext dbContext) => dbContext.Ships;
     }
 }
