@@ -103,6 +103,42 @@ export class Renderer {
             (screenY - this._mapOffset.y) / this._mapScale);
     }
 
+    private getOrbitalXY(arg: { r: number, phi: number, year: number }, t: number, offset?: { x: number, y: number }): Point {
+        let {r, phi, year} = arg;
+        offset = offset || {x: 0, y: 0};
+        const period = Math.floor(600000 * year);
+        phi += ((t % period) / period) * 2 * Math.PI;
+        return new Point(
+            offset.x + r * this._mapScale * Math.cos(phi),
+            offset.y + r * this._mapScale * Math.sin(phi));
+    }
+
+    private getEntityNearestToPoint(point: Point, maxD: number): SelectedItem | undefined {
+        const sector = this.screenToSector(point);
+        const stars = this._sectorSource.getSector(sector.x, sector.y);
+
+        for (const star of stars) {
+            const {x, y} = this.toScreen(star);
+            let d = Math.sqrt(Math.pow(x - point.x, 2) + Math.pow(y - point.y, 2));
+            console.log(`Checking ${star.name} - ${d}`);
+            if (d < maxD) {
+                console.log("**SELECTED**");
+                return {type: 'Star', item: star};
+            }
+
+            for (const planet of star.planets) {
+                const {x: px, y: py} = this.getOrbitalXY(planet, Date.now(), {x, y});
+                d = Math.sqrt(Math.pow(px - point.x, 2) + Math.pow(py - point.y, 2));
+                console.log(`Checking ${planet.name} - ${d}`);
+                if (d < maxD) {
+                    console.log("**SELECTED**");
+                    return {type: 'Planet', item: planet};
+                }
+            }
+        }
+        return undefined;
+    }
+
     public render() {
         const fps = 1000 / (Date.now() - this._lastFrame);
         this._lastFrame = Date.now();
@@ -201,16 +237,12 @@ export class Renderer {
 
                             // draw orbit first
                             ctx.beginPath();
-                            const orbitR = Number(planet.r * this._mapScale);
+                            const orbitR = planet.r * this._mapScale;
                             ctx.arc(tp.x, tp.y, orbitR, 0, 2 * Math.PI);
                             ctx.stroke();
                             // now draw planet
                             ctx.beginPath();
-                            const period = Math.floor(600000 * planet.year);
-                            const phi = planet.phi + ((Date.now() % period) / period) * 2 * Math.PI;
-                            const tPlanetPt = new Point(
-                                tp.x + orbitR * Math.cos(phi),
-                                tp.y + orbitR * Math.sin(phi));
+                            const tPlanetPt = this.getOrbitalXY(planet, Date.now(), tp);
                             ctx.arc(tPlanetPt.x, tPlanetPt.y, 3, 0, 2 * Math.PI);
                             ctx.fill();
 
@@ -239,11 +271,7 @@ export class Renderer {
                                 tLoc = this.toScreen(ship.loc);
                             } else {
                                 const starLoc = this.toScreen(ship.loc.star);
-                                const period = Math.floor(600000 * ship.loc.year);
-                                const phi = ship.loc.phi + ((Date.now() % period) / period) * 2 * Math.PI;
-                                tLoc = new Point(
-                                    starLoc.x + ship.loc.r * this._mapScale * Math.cos(phi),
-                                    starLoc.y + ship.loc.r * this._mapScale * Math.sin(phi));
+                                tLoc = this.getOrbitalXY(ship.loc, Date.now(), starLoc);
                             }
                             // draw orbit first
                             ctx.beginPath();
@@ -304,36 +332,7 @@ export class Renderer {
             return;
         }
 
-        const clickPoint = new Point(e.clientX, e.clientY);
-        const zoomSect = this.screenToSector({x: e.clientX, y: e.clientY});
-        const stars = this._sectorSource.getSector(zoomSect.x, zoomSect.y);
-
-        for (const star of stars) {
-            const {x, y} = this.toScreen(star);
-            let d = Math.sqrt(Math.pow(x - e.clientX, 2) + Math.pow(y - e.clientY, 2));
-            console.log(`Checking ${star.name} - ${d}`);
-            if (d < 10) {
-                console.log("**SELECTED**");
-                this.selectedItem = {type: 'Star', item: star};
-                return;
-            }
-
-            for (const planet of star.planets) {
-                const period = Math.floor(600000 * planet.year);
-                const phi = planet.phi + ((Date.now() % period) / period) * 2 * Math.PI;
-                const orbitR = Number(planet.r * this._mapScale);
-                const px = x + orbitR * Math.cos(phi);
-                const py = y + orbitR * Math.sin(phi);
-                d = Math.sqrt(Math.pow(px - e.clientX, 2) + Math.pow(py - e.clientY, 2));
-                console.log(`Checking ${planet.name} - ${d}`);
-                if (d < 10) {
-                    console.log("**SELECTED**");
-                    this.selectedItem = {type: 'Planet', item: planet};
-                    return;
-                }
-            }
-        }
-        this.selectedItem = undefined;
+        this.selectedItem = this.getEntityNearestToPoint(new Point(e.clientX, e.clientY), 10);
     }
 
     private mouseMove(e: MouseEvent): void {
@@ -357,31 +356,12 @@ export class Renderer {
         } else if (newScale < 1 / (10 * (this._sectorSize / this._canvas.width))) {
             newScale = 1 / (10 * (this._sectorSize / this._canvas.width));
         }
+
         let zoomPoint = new Point(e.clientX, e.clientY);
-        const zoomSect = this.screenToSector({x: e.clientX, y: e.clientY});
-        const stars = this._sectorSource.getSector(zoomSect.x, zoomSect.y);
-
-        for (const star of stars) {
-            let {x, y} = this.toScreen(star);
-            let d = Math.sqrt(Math.pow(x - e.clientX, 2) + Math.pow(y - e.clientY, 2));
-            if (d < 10) {
-                console.log(`Snapping to ${star.name} @ ${x}, ${y}`);
-                zoomPoint = new Point(x, y);
-                break;
-            }
-
-            // for (const planet of star.planets) {
-            //     const period = Math.floor(600000 * planet.year);
-            //     const phi = planet.phi + ((Date.now() % period) / period) * 2 * Math.PI;
-            //     x += Math.round(planet.r / this._mapScale) * Math.cos(phi);
-            //     y += Math.round(planet.r / this._mapScale) * Math.sin(phi);
-            //     d = Math.sqrt(Math.pow(x - e.clientX, 2) + Math.pow(y - e.clientY, 2));
-            //     if (d < 10) {
-            //         zoomPoint.x = star.sx * this._sectorSize + star.x + planet.r * Math.cos(phi);
-            //         zoomPoint.y = star.sy * this._sectorSize + star.y + planet.r * Math.sin(phi);
-            //         break;
-            //     }
-            // }
+        const snapEntity = this.getEntityNearestToPoint(new Point(e.clientX, e.clientY), 10);
+        if (snapEntity && snapEntity.type == 'Star') {
+            zoomPoint = this.toScreen(snapEntity.item);
+            console.log(`Snapping to ${snapEntity.item.name} @ ${zoomPoint}`);
         }
 
         this._mapScale = newScale;
