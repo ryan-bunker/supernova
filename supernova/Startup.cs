@@ -47,7 +47,7 @@ namespace Supernova.Api
 
             services
                 .AddDbContext<UniverseContext>(
-                    options => options.UseSqlite(Configuration["ConnectionStrings:Sqlite"]))
+                    options => options.UseNpgsql(Configuration["ConnectionStrings:Npgsql"]))
                 .AddGraphQL(
                     SchemaBuilder.New()
                         .AddQueryType<Query>()
