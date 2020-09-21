@@ -128,7 +128,9 @@ const App = withStyles(styles)(
             this._playerClient.getHomeworld().then(
                 homeworld => {
                     playerHomeworld = homeworld;
-                    this._renderer.selectedItem = { type: "Planet", item: homeworld };
+                    if (homeworld) {
+                        this._renderer.selectedItem = {type: "Planet", item: homeworld};
+                    }
                     //const { x, y } = this._renderer.transform.transform(new Point(homeworld.star.x, homeworld.star.y));
                     //this._renderer.transform.translateTo(-x + canvas.width / 2, -y + canvas.height / 3);
 

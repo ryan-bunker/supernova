@@ -229,7 +229,7 @@ export class Renderer {
                         ctx.strokeStyle = `rgba(128, 128, 128, ${planetAlpha})`;
                         const homeworld = this._playerData.getHomeworld();
                         for (const planet of star.planets) {
-                            if (homeworld.star.id === star.id && homeworld.id == planet.id) {
+                            if (homeworld && homeworld.star.id === star.id && homeworld.id == planet.id) {
                                 ctx.fillStyle = `rgba(60, 60, 255, ${planetAlpha})`;
                             } else {
                                 ctx.fillStyle = `rgba(255, 255, 255, ${planetAlpha})`;
