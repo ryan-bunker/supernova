@@ -12,6 +12,7 @@ namespace Supernova.Api.Data
         public DbSet<Planet> Planets { get; set; }
         public DbSet<PlanetMeta> PlanetMetas { get; set; }
         public DbSet<Ship> Ships { get; set; }
+        public DbSet<Player> Players { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -41,9 +42,11 @@ namespace Supernova.Api.Data
                 .WithOne()
                 .HasForeignKey(t => t.PlayerId);
             modelBuilder.Entity<Player>()
-                .HasMany<PlanetMeta>()
+                .HasMany<PlanetMeta>(t => t.Planets)
                 .WithOne()
                 .HasForeignKey(t => t.OwnerId);
+            modelBuilder.Entity<Player>()
+                .OwnsOne(t => t.Race);
 
             modelBuilder.Entity<Ship>()
                 .OwnsOne(t => t.LocationPoint);
