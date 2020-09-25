@@ -167,7 +167,7 @@ const App = withStyles(styles)(
                         </Grid>
                     </div>
                     <div className={classes.sidebar}>
-                        <Sidebar planets={this.state.planets} />
+                        <Sidebar planets={this.state.planets} client={this._starClient} />
                     </div>
                 </>
             );
